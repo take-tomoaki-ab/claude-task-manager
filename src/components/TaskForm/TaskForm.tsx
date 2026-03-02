@@ -1,0 +1,251 @@
+import { useState, useEffect } from 'react'
+import type { TaskType } from '../../types/task'
+import { useTaskStore } from '../../stores/taskStore'
+import type { PaneConfig } from '../../types/ipc'
+
+type Props = {
+  isOpen: boolean
+  onClose: () => void
+}
+
+const INITIAL_FORM = {
+  type: 'feat' as TaskType,
+  title: '',
+  branch: '',
+  ticket: '',
+  prompt: '',
+  pane: '',
+  depends_on: '',
+  url: '',
+  output: '',
+  directory: ''
+}
+
+export default function TaskForm({ isOpen, onClose }: Props) {
+  const [form, setForm] = useState(INITIAL_FORM)
+  const [panes, setPanes] = useState<PaneConfig[]>([])
+  const tasks = useTaskStore((s) => s.tasks)
+  const createTask = useTaskStore((s) => s.createTask)
+
+  useEffect(() => {
+    if (isOpen) {
+      window.api.settings.get().then((settings) => setPanes(settings.panes))
+      setForm(INITIAL_FORM)
+    }
+  }, [isOpen])
+
+  if (!isOpen) return null
+
+  const set = (key: string, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.title || !form.pane) return
+
+    const base = {
+      title: form.title,
+      pane: form.pane,
+      status: 'will_do' as const,
+      ...(form.depends_on ? { depends_on: form.depends_on } : {})
+    }
+
+    switch (form.type) {
+      case 'feat':
+        await createTask({ ...base, type: 'feat', branch: form.branch, ticket: form.ticket, prompt: form.prompt })
+        break
+      case 'design':
+        await createTask({ ...base, type: 'design', output: form.output })
+        break
+      case 'review':
+        await createTask({ ...base, type: 'review', url: form.url })
+        break
+      case 'qa':
+        await createTask({ ...base, type: 'qa', branch: form.branch, ticket: form.ticket })
+        break
+      case 'research':
+        await createTask({ ...base, type: 'research', branch: form.branch, prompt: form.prompt })
+        break
+      case 'chore':
+        await createTask({ ...base, type: 'chore', directory: form.directory })
+        break
+    }
+    onClose()
+  }
+
+  const inputClass = 'w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500'
+  const labelClass = 'block text-xs text-gray-400 mb-1'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+      <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">新規タスク</h2>
+
+          <div className="space-y-3">
+            {/* Type */}
+            <div>
+              <label className={labelClass}>タイプ</label>
+              <select
+                value={form.type}
+                onChange={(e) => set('type', e.target.value)}
+                className={inputClass}
+              >
+                <option value="feat">feat</option>
+                <option value="design">design</option>
+                <option value="review">review</option>
+                <option value="qa">qa</option>
+                <option value="research">research</option>
+                <option value="chore">chore</option>
+              </select>
+            </div>
+
+            {/* Title */}
+            <div>
+              <label className={labelClass}>タイトル</label>
+              <input
+                type="text"
+                value={form.title}
+                onChange={(e) => set('title', e.target.value)}
+                placeholder="タスクタイトル"
+                className={inputClass}
+                required
+              />
+            </div>
+
+            {/* Type-specific fields */}
+            {(form.type === 'feat' || form.type === 'qa' || form.type === 'research') && (
+              <div>
+                <label className={labelClass}>Branch</label>
+                <input
+                  type="text"
+                  value={form.branch}
+                  onChange={(e) => set('branch', e.target.value)}
+                  placeholder="take/feature-name"
+                  className={inputClass}
+                />
+              </div>
+            )}
+
+            {(form.type === 'feat' || form.type === 'qa') && (
+              <div>
+                <label className={labelClass}>Wrike Ticket URL</label>
+                <input
+                  type="text"
+                  value={form.ticket}
+                  onChange={(e) => set('ticket', e.target.value)}
+                  placeholder="https://www.wrike.com/..."
+                  className={inputClass}
+                />
+              </div>
+            )}
+
+            {(form.type === 'feat' || form.type === 'research') && (
+              <div>
+                <label className={labelClass}>Prompt</label>
+                <textarea
+                  value={form.prompt}
+                  onChange={(e) => set('prompt', e.target.value)}
+                  placeholder="Claude Codeへの指示..."
+                  rows={3}
+                  className={inputClass}
+                />
+              </div>
+            )}
+
+            {form.type === 'design' && (
+              <div>
+                <label className={labelClass}>Output</label>
+                <input
+                  type="text"
+                  value={form.output}
+                  onChange={(e) => set('output', e.target.value)}
+                  placeholder="出力先ファイル"
+                  className={inputClass}
+                />
+              </div>
+            )}
+
+            {form.type === 'review' && (
+              <div>
+                <label className={labelClass}>PR URL</label>
+                <input
+                  type="text"
+                  value={form.url}
+                  onChange={(e) => set('url', e.target.value)}
+                  placeholder="https://github.com/..."
+                  className={inputClass}
+                />
+              </div>
+            )}
+
+            {form.type === 'chore' && (
+              <div>
+                <label className={labelClass}>Directory</label>
+                <input
+                  type="text"
+                  value={form.directory}
+                  onChange={(e) => set('directory', e.target.value)}
+                  placeholder="/path/to/directory"
+                  className={inputClass}
+                />
+              </div>
+            )}
+
+            {/* Pane */}
+            <div>
+              <label className={labelClass}>Pane</label>
+              <select
+                value={form.pane}
+                onChange={(e) => set('pane', e.target.value)}
+                className={inputClass}
+                required
+              >
+                <option value="">選択してください</option>
+                {panes.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Depends on */}
+            <div>
+              <label className={labelClass}>依存タスク</label>
+              <select
+                value={form.depends_on}
+                onChange={(e) => set('depends_on', e.target.value)}
+                className={inputClass}
+              >
+                <option value="">なし</option>
+                {tasks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    [{t.type}] {t.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 text-white text-sm"
+            >
+              キャンセル
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm"
+            >
+              作成
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

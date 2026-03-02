@@ -1,0 +1,194 @@
+import { useState } from 'react'
+import type { RuntimeTask } from '../../types/task'
+import { useTaskStore } from '../../stores/taskStore'
+import { useTerminalStore } from '../../stores/terminalStore'
+import ContextMeter from '../ContextMeter/ContextMeter'
+import BranchStatus from '../BranchStatus/BranchStatus'
+import PRStatusBadge from './PRStatusBadge'
+import ConflictWarningModal from '../Common/ConflictWarningModal'
+
+type Props = {
+  task: RuntimeTask
+}
+
+const TYPE_COLORS: Record<string, string> = {
+  feat: 'bg-blue-600',
+  design: 'bg-purple-600',
+  review: 'bg-yellow-600',
+  qa: 'bg-green-600',
+  research: 'bg-cyan-600',
+  chore: 'bg-gray-600'
+}
+
+export default function TaskCard({ task }: Props) {
+  const tasks = useTaskStore((s) => s.tasks)
+  const startTask = useTaskStore((s) => s.startTask)
+  const updateTask = useTaskStore((s) => s.updateTask)
+  const archiveTask = useTaskStore((s) => s.archiveTask)
+  const openTerminal = useTerminalStore((s) => s.openTerminal)
+
+  const [conflictOpen, setConflictOpen] = useState(false)
+  const [conflictingTask, setConflictingTask] = useState<RuntimeTask | null>(null)
+
+  const depTask = task.depends_on ? tasks.find((t) => t.id === task.depends_on) : null
+  const depBlocked = depTask ? depTask.status !== 'done' : false
+
+  const handleStart = async () => {
+    const result = await startTask(task.id)
+    if (result.conflict && result.conflictingTask) {
+      setConflictingTask(result.conflictingTask)
+      setConflictOpen(true)
+    }
+  }
+
+  const handleForceStart = async () => {
+    setConflictOpen(false)
+    await startTask(task.id, true)
+  }
+
+  const handleComplete = async () => {
+    await updateTask(task.id, { status: 'done', completedAt: new Date().toISOString() })
+  }
+
+  const handleArchive = async () => {
+    await archiveTask(task.id)
+  }
+
+  const openLink = (url: string) => {
+    window.api.shell.openExternal(url)
+  }
+
+  return (
+    <>
+      <div className="bg-gray-800 rounded-lg p-4 shadow mb-3">
+        {/* Type badge + Title */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className={`text-xs px-2 py-0.5 rounded text-white font-medium ${TYPE_COLORS[task.type]}`}>
+            {task.type}
+          </span>
+          <span className="text-sm font-medium text-white truncate">{task.title}</span>
+        </div>
+
+        {/* will_do card */}
+        {task.status === 'will_do' && (
+          <div>
+            {depTask && (
+              <p className="text-xs text-gray-400 mb-2">
+                依存: {depTask.title} ({depTask.status})
+              </p>
+            )}
+
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                onClick={handleStart}
+                disabled={depBlocked}
+                className={`px-3 py-1 rounded text-xs font-medium ${
+                  depBlocked
+                    ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+                title={depBlocked ? '依存タスクが未完了です' : undefined}
+              >
+                開始
+              </button>
+
+              {task.type === 'feat' && 'ticket' in task && task.ticket && (
+                <button
+                  onClick={() => openLink(task.ticket)}
+                  className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
+                >
+                  Wrike
+                </button>
+              )}
+              {task.type === 'qa' && 'ticket' in task && task.ticket && (
+                <button
+                  onClick={() => openLink(task.ticket)}
+                  className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
+                >
+                  Wrike
+                </button>
+              )}
+              {task.type === 'review' && 'url' in task && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openLink(task.url)}
+                    className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  >
+                    PR
+                  </button>
+                  <PRStatusBadge url={task.url} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* doing card */}
+        {task.status === 'doing' && (
+          <div className="space-y-2">
+            <div className="text-xs text-gray-400">
+              Pane: <span className="text-gray-300 font-mono">{task.pane}</span>
+              {task.workdir && (
+                <span className="text-gray-500"> → {task.workdir}</span>
+              )}
+            </div>
+
+            {task.type !== 'chore' && task.workdir && (
+              <BranchStatus workdir={task.workdir} />
+            )}
+            {task.type === 'chore' && 'directory' in task && (
+              <div className="text-xs text-gray-400">
+                Dir: <span className="font-mono text-gray-300">{task.directory}</span>
+              </div>
+            )}
+
+            <ContextMeter
+              taskId={task.id}
+              used={task.contextUsed}
+              limit={task.contextLimit}
+            />
+
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                onClick={() => openTerminal(task.id)}
+                className="px-3 py-1 rounded text-xs bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                対話を開く
+              </button>
+              <button
+                onClick={handleComplete}
+                className="px-3 py-1 rounded text-xs bg-green-600 hover:bg-green-700 text-white"
+              >
+                完了
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* done card */}
+        {task.status === 'done' && (
+          <div>
+            {task.completedAt && (
+              <p className="text-xs text-gray-500 mb-2">
+                完了: {new Date(task.completedAt).toLocaleString('ja-JP')}
+              </p>
+            )}
+            <button
+              onClick={handleArchive}
+              className="px-3 py-1 rounded text-xs bg-gray-600 hover:bg-gray-500 text-gray-300"
+            >
+              アーカイブ
+            </button>
+          </div>
+        )}
+      </div>
+
+      <ConflictWarningModal
+        isOpen={conflictOpen}
+        conflictingTask={conflictingTask}
+        onForce={handleForceStart}
+        onCancel={() => setConflictOpen(false)}
+      />
+    </>
+  )
+}
