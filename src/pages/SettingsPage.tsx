@@ -1,11 +1,48 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { AppSettings, PaneConfig, DevServerConfig } from '../types/ipc'
+import ConfirmDialog from '../components/Common/ConfirmDialog'
+
+// args配列 ↔ テキスト変換をonBlurで行うinput
+function ArgsInput({
+  value,
+  onChange,
+  className,
+  placeholder
+}: {
+  value: string[]
+  onChange: (args: string[]) => void
+  className?: string
+  placeholder?: string
+}) {
+  const [text, setText] = useState(value.join(' '))
+
+  // 外部からvalueが変わった場合に同期（初期表示のみ）
+  useEffect(() => {
+    setText(value.join(' '))
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <input
+      type="text"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => onChange(text.split(/\s+/).filter(Boolean))}
+      placeholder={placeholder}
+      className={className}
+    />
+  )
+}
+
+type DeleteTarget =
+  | { kind: 'pane'; paneIndex: number }
+  | { kind: 'devserver'; paneIndex: number; dsIndex: number }
 
 export default function SettingsPage() {
   const navigate = useNavigate()
   const [settings, setSettings] = useState<AppSettings>({ panes: [] })
   const [saving, setSaving] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
 
   useEffect(() => {
     window.api.settings.get().then(setSettings)
@@ -27,10 +64,7 @@ export default function SettingsPage() {
   }
 
   const removePane = (index: number) => {
-    setSettings((prev) => ({
-      ...prev,
-      panes: prev.panes.filter((_, i) => i !== index)
-    }))
+    setDeleteTarget({ kind: 'pane', paneIndex: index })
   }
 
   const updateDevServer = (paneIndex: number, dsIndex: number, updates: Partial<DevServerConfig>) => {
@@ -55,14 +89,27 @@ export default function SettingsPage() {
   }
 
   const removeDevServer = (paneIndex: number, dsIndex: number) => {
-    setSettings((prev) => {
-      const panes = [...prev.panes]
-      panes[paneIndex] = {
-        ...panes[paneIndex],
-        devServers: panes[paneIndex].devServers.filter((_, i) => i !== dsIndex)
-      }
-      return { ...prev, panes }
-    })
+    setDeleteTarget({ kind: 'devserver', paneIndex, dsIndex })
+  }
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return
+    if (deleteTarget.kind === 'pane') {
+      setSettings((prev) => ({
+        ...prev,
+        panes: prev.panes.filter((_, i) => i !== deleteTarget.paneIndex)
+      }))
+    } else {
+      setSettings((prev) => {
+        const panes = [...prev.panes]
+        panes[deleteTarget.paneIndex] = {
+          ...panes[deleteTarget.paneIndex],
+          devServers: panes[deleteTarget.paneIndex].devServers.filter((_, i) => i !== deleteTarget.dsIndex)
+        }
+        return { ...prev, panes }
+      })
+    }
+    setDeleteTarget(null)
   }
 
   const handleSave = async () => {
@@ -151,12 +198,9 @@ export default function SettingsPage() {
                       placeholder="Command"
                       className={`${inputClass} w-24`}
                     />
-                    <input
-                      type="text"
-                      value={ds.args.join(' ')}
-                      onChange={(e) =>
-                        updateDevServer(pi, di, { args: e.target.value.split(' ').filter(Boolean) })
-                      }
+                    <ArgsInput
+                      value={ds.args}
+                      onChange={(args) => updateDevServer(pi, di, { args })}
                       placeholder="Args (space sep)"
                       className={`${inputClass} flex-1`}
                     />
@@ -206,6 +250,18 @@ export default function SettingsPage() {
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteTarget !== null}
+        title="削除の確認"
+        message={
+          deleteTarget?.kind === 'pane'
+            ? `Pane「${settings.panes[deleteTarget.paneIndex]?.id || ''}」を削除しますか？`
+            : `Dev Server「${settings.panes[deleteTarget?.paneIndex ?? 0]?.devServers[deleteTarget?.dsIndex ?? 0]?.label || ''}」を削除しますか？`
+        }
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }
