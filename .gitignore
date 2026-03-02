@@ -1,0 +1,38 @@
+node_modules
+dist
+out
+.env
+.env.local
+.env.*.local
+
+# Electron build artifacts
+dist-electron
+
+# SQLite database files
+*.db
+*.sqlite
+*.sqlite3
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# TypeScript
+*.js.map
+*.d.ts.map
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
