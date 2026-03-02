@@ -67,7 +67,7 @@ const api = {
       ipcRenderer.on('devserver:status-change', listener)
       return () => ipcRenderer.removeListener('devserver:status-change', listener)
     },
-    openLog: (paneId: string, label: string): Promise<void> =>
+    getLog: (paneId: string, label: string): Promise<string> =>
       ipcRenderer.invoke('devserver:log', { paneId, label })
   },
 

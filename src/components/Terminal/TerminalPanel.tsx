@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
@@ -158,16 +158,43 @@ export default function TerminalPanel() {
 }
 
 function DevServerLogView({ logKey }: { logKey: string }) {
-  const [paneId, label] = logKey.split(':')
+  const colonIdx = logKey.indexOf(':')
+  const paneId = logKey.slice(0, colonIdx)
+  const label = logKey.slice(colonIdx + 1)
+  const [log, setLog] = useState('')
+  const bottomRef = useRef<HTMLPreElement>(null)
 
   useEffect(() => {
-    window.api.devserver.openLog(paneId, label)
+    let cancelled = false
+
+    const poll = async () => {
+      try {
+        const text = await window.api.devserver.getLog(paneId, label)
+        if (!cancelled) setLog(text)
+      } catch {
+        // ignore
+      }
+    }
+
+    poll()
+    const id = setInterval(poll, 1000)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
   }, [paneId, label])
 
+  // 新しいログが来たら末尾にスクロール
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [log])
+
   return (
-    <div className="text-xs font-mono text-gray-300">
-      <p className="text-gray-500">Dev server log: {paneId} / {label}</p>
-      <p className="text-gray-500 mt-2">ログは別ウィンドウで表示されます</p>
-    </div>
+    <pre
+      ref={bottomRef}
+      className="text-xs font-mono text-gray-300 whitespace-pre-wrap break-all"
+    >
+      {log || <span className="text-gray-500">（ログ待機中...）</span>}
+    </pre>
   )
 }

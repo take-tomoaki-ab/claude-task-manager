@@ -119,7 +119,7 @@ export type WindowApi = {
     stop: (paneId: string, label: string) => Promise<void>
     status: () => Promise<DevServerStatus[]>
     onStatusChange: (callback: (statuses: DevServerStatus[]) => void) => () => void
-    openLog: (paneId: string, label: string) => Promise<void>
+    getLog: (paneId: string, label: string) => Promise<string>
   }
   settings: {
     get: () => Promise<AppSettings>
