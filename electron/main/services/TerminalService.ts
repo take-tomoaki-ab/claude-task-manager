@@ -12,13 +12,17 @@ export class TerminalService {
     }
 
     const shell = process.env.SHELL || '/bin/bash'
+    const env: Record<string, string> = {
+      ...(process.env as Record<string, string>),
+      PATH: `/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH || ''}`
+    }
 
-    const ptyProcess = pty.spawn(shell, [], {
+    const ptyProcess = pty.spawn(shell, ['-l'], {
       name: 'xterm-256color',
       cols,
       rows,
       cwd: workdir,
-      env: process.env as Record<string, string>
+      env
     })
 
     this.sessions.set(taskId, ptyProcess)

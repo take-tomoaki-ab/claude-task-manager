@@ -24,10 +24,18 @@ export class DevServerService {
     this.configs.set(k, { paneConfig, serverConfig })
     this.logs.set(k, '')
 
-    const child = spawn(serverConfig.command, serverConfig.args, {
+    // Electronはシェルの環境を継承しないためhomebrew等がPATHに入らない。
+    // ログインシェル（-l -c）で起動することでユーザーのprofileを読み込む。
+    const userShell = process.env.SHELL || '/bin/bash'
+    const cmdString = [serverConfig.command, ...serverConfig.args].join(' ')
+    const env = {
+      ...process.env,
+      PATH: `/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH || ''}`
+    }
+
+    const child = spawn(userShell, ['-l', '-c', cmdString], {
       cwd: paneConfig.path,
-      env: { ...process.env },
-      shell: true,
+      env,
       stdio: ['pipe', 'pipe', 'pipe']
     })
 
@@ -41,6 +49,13 @@ export class DevServerService {
     child.stderr?.on('data', (data: Buffer) => {
       const current = this.logs.get(k) || ''
       this.logs.set(k, current + data.toString())
+    })
+
+    child.on('error', (err) => {
+      const current = this.logs.get(k) || ''
+      this.logs.set(k, current + `[error] ${err.message}\n`)
+      this.processes.delete(k)
+      this.notifyChange()
     })
 
     child.on('exit', () => {
