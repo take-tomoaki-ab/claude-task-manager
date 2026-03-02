@@ -1,0 +1,86 @@
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import type { Task, RuntimeTaskState, ArchiveEntry, RuntimeTask } from '../../src/types/task'
+import type {
+  AppSettings,
+  GitStatusResult,
+  DevServerStatus,
+  TerminalDataEvent,
+  ContextInfo
+} from '../../src/types/ipc'
+
+const api = {
+  tasks: {
+    list: (): Promise<RuntimeTask[]> => ipcRenderer.invoke('tasks:list'),
+    create: (task: Omit<Task, 'id' | 'created_at'>): Promise<RuntimeTask> =>
+      ipcRenderer.invoke('tasks:create', task),
+    update: (id: string, data: Partial<Task & RuntimeTaskState>): Promise<RuntimeTask> =>
+      ipcRenderer.invoke('tasks:update', { id, data }),
+    delete: (id: string): Promise<void> => ipcRenderer.invoke('tasks:delete', id),
+    archive: (id: string): Promise<void> => ipcRenderer.invoke('tasks:archive', id),
+    listArchived: (): Promise<ArchiveEntry[]> => ipcRenderer.invoke('tasks:list-archived'),
+    deleteArchived: (id: string): Promise<void> =>
+      ipcRenderer.invoke('tasks:delete-archived', id)
+  },
+
+  terminal: {
+    start: (taskId: string, workdir: string): Promise<void> =>
+      ipcRenderer.invoke('terminal:start', { taskId, workdir }),
+    write: (taskId: string, data: string): Promise<void> =>
+      ipcRenderer.invoke('terminal:write', { taskId, data }),
+    kill: (taskId: string): Promise<void> => ipcRenderer.invoke('terminal:kill', taskId),
+    resize: (taskId: string, cols: number, rows: number): Promise<void> =>
+      ipcRenderer.invoke('terminal:resize', { taskId, cols, rows }),
+    onData: (callback: (event: TerminalDataEvent) => void): (() => void) => {
+      const listener = (_: IpcRendererEvent, event: TerminalDataEvent): void => callback(event)
+      ipcRenderer.on('terminal:data', listener)
+      return () => ipcRenderer.removeListener('terminal:data', listener)
+    },
+    offData: (_taskId: string): void => {
+      // Individual task cleanup is handled by the unsubscribe returned from onData
+    }
+  },
+
+  git: {
+    status: (workdir: string): Promise<GitStatusResult> =>
+      ipcRenderer.invoke('git:status', workdir)
+  },
+
+  claude: {
+    start: (taskId: string, workdir: string, prompt?: string): Promise<void> =>
+      ipcRenderer.invoke('claude:start', { taskId, workdir, prompt }),
+    onContextUpdate: (callback: (info: ContextInfo) => void): (() => void) => {
+      const listener = (_: IpcRendererEvent, info: ContextInfo): void => callback(info)
+      ipcRenderer.on('claude:context-update', listener)
+      return () => ipcRenderer.removeListener('claude:context-update', listener)
+    }
+  },
+
+  devserver: {
+    start: (paneId: string, label: string): Promise<void> =>
+      ipcRenderer.invoke('devserver:start', { paneId, label }),
+    stop: (paneId: string, label: string): Promise<void> =>
+      ipcRenderer.invoke('devserver:stop', { paneId, label }),
+    status: (): Promise<DevServerStatus[]> => ipcRenderer.invoke('devserver:status'),
+    onStatusChange: (callback: (statuses: DevServerStatus[]) => void): (() => void) => {
+      const listener = (_: IpcRendererEvent, statuses: DevServerStatus[]): void =>
+        callback(statuses)
+      ipcRenderer.on('devserver:status-change', listener)
+      return () => ipcRenderer.removeListener('devserver:status-change', listener)
+    },
+    openLog: (paneId: string, label: string): Promise<void> =>
+      ipcRenderer.invoke('devserver:log', { paneId, label })
+  },
+
+  settings: {
+    get: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
+    set: (settings: Partial<AppSettings>): Promise<void> =>
+      ipcRenderer.invoke('settings:set', settings)
+  },
+
+  shell: {
+    openExternal: (url: string): Promise<void> =>
+      ipcRenderer.invoke('shell:open-external', url)
+  }
+}
+
+contextBridge.exposeInMainWorld('api', api)

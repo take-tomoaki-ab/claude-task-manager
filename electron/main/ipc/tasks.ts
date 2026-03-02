@@ -1,0 +1,81 @@
+import { ipcMain, Notification } from 'electron'
+import type { TaskService } from '../services/TaskService'
+import type { Task, RuntimeTaskState } from '../../../src/types/task'
+
+export function registerTaskHandlers(taskService: TaskService): void {
+  ipcMain.handle('tasks:list', async () => {
+    try {
+      return taskService.list()
+    } catch (error) {
+      throw new Error(`Failed to list tasks: ${(error as Error).message}`)
+    }
+  })
+
+  ipcMain.handle(
+    'tasks:create',
+    async (_, data: Omit<Task, 'id' | 'created_at'>) => {
+      try {
+        return taskService.create(data)
+      } catch (error) {
+        throw new Error(`Failed to create task: ${(error as Error).message}`)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'tasks:update',
+    async (_, { id, data }: { id: string; data: Partial<Task & RuntimeTaskState> }) => {
+      try {
+        const existing = taskService.list().find((t) => t.id === id)
+        const result = taskService.update(id, data)
+
+        if (
+          existing &&
+          existing.status === 'doing' &&
+          data.status === 'done'
+        ) {
+          new Notification({
+            title: '完了',
+            body: `タスク "${result.title}" が完了しました`
+          }).show()
+        }
+
+        return result
+      } catch (error) {
+        throw new Error(`Failed to update task: ${(error as Error).message}`)
+      }
+    }
+  )
+
+  ipcMain.handle('tasks:delete', async (_, id: string) => {
+    try {
+      taskService.delete(id)
+    } catch (error) {
+      throw new Error(`Failed to delete task: ${(error as Error).message}`)
+    }
+  })
+
+  ipcMain.handle('tasks:archive', async (_, id: string) => {
+    try {
+      taskService.archive(id)
+    } catch (error) {
+      throw new Error(`Failed to archive task: ${(error as Error).message}`)
+    }
+  })
+
+  ipcMain.handle('tasks:list-archived', async () => {
+    try {
+      return taskService.listArchived()
+    } catch (error) {
+      throw new Error(`Failed to list archived tasks: ${(error as Error).message}`)
+    }
+  })
+
+  ipcMain.handle('tasks:delete-archived', async (_, id: string) => {
+    try {
+      taskService.deleteArchived(id)
+    } catch (error) {
+      throw new Error(`Failed to delete archived task: ${(error as Error).message}`)
+    }
+  })
+}
