@@ -3,7 +3,8 @@
   "include": [
     "electron.vite.config.*",
     "electron/**/*",
-    "electron/**/*.d.ts"
+    "electron/**/*.d.ts",
+    "src/types/**/*"
   ],
   "compilerOptions": {
     "composite": true,
