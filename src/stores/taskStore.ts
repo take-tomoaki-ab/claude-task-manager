@@ -21,9 +21,13 @@ function applyFilters(tasks: RuntimeTask[], searchQuery: string, typeFilters: Ta
   let result = tasks
   if (searchQuery) {
     const q = searchQuery.toLowerCase()
-    result = result.filter(
-      (t) => t.title.toLowerCase().includes(q) || t.pane.toLowerCase().includes(q)
-    )
+    result = result.filter((t) => {
+      if (t.title.toLowerCase().includes(q)) return true
+      if ('branch' in t && t.branch?.toLowerCase().includes(q)) return true
+      if ('ticket' in t && t.ticket?.toLowerCase().includes(q)) return true
+      if ('url' in t && t.url?.toLowerCase().includes(q)) return true
+      return false
+    })
   }
   if (typeFilters.length > 0) {
     result = result.filter((t) => typeFilters.includes(t.type))
