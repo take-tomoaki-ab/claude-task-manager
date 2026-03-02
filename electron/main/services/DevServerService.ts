@@ -25,7 +25,8 @@ export class DevServerService {
     this.logs.set(k, '')
 
     // Electronはシェルの環境を継承しないためhomebrew等がPATHに入らない。
-    // ログインシェル（-l -c）で起動することでユーザーのprofileを読み込む。
+    // -l（ログインシェル）は .zprofile 等でexit/execが走り即終了するリスクがあるため
+    // 使わず、PATHを明示的に補強して -c でコマンドを実行する。
     const userShell = process.env.SHELL || '/bin/bash'
     const cmdString = [serverConfig.command, ...serverConfig.args].join(' ')
     const env = {
@@ -33,7 +34,7 @@ export class DevServerService {
       PATH: `/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH || ''}`
     }
 
-    const child = spawn(userShell, ['-l', '-c', cmdString], {
+    const child = spawn(userShell, ['-c', cmdString], {
       cwd: paneConfig.path,
       env,
       stdio: ['pipe', 'pipe', 'pipe']
@@ -58,7 +59,9 @@ export class DevServerService {
       this.notifyChange()
     })
 
-    child.on('exit', () => {
+    child.on('exit', (code, signal) => {
+      const current = this.logs.get(k) || ''
+      this.logs.set(k, current + `\n[exited: code=${code} signal=${signal}]\n`)
       this.processes.delete(k)
       this.notifyChange()
     })
