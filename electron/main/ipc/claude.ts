@@ -27,9 +27,6 @@ export function registerClaudeHandlers(
           throw new Error(`Task not found: ${taskId}`)
         }
 
-        // Update status to doing
-        taskService.update(taskId, { status: 'doing' })
-
         // Determine workdir from pane config or task fields
         const settings = getSettings()
         let resolvedWorkdir = workdir
@@ -45,44 +42,51 @@ export function registerClaudeHandlers(
           resolvedWorkdir = expandPath(resolvedWorkdir)
         }
 
-        // Check for branch checkout
-        if ('branch' in task && task.branch) {
-          await gitService.checkout(resolvedWorkdir, task.branch)
-        }
-
         // Check if another doing task exists on the same pane
         const conflicting = tasks.find(
           (t) => t.id !== taskId && t.pane === task.pane && t.status === 'doing'
         )
         if (conflicting) {
-          throw new Error(
-            `PANE_CONFLICT: Another task "${conflicting.title}" is already running on pane "${task.pane}"`
-          )
+          throw new Error('PANE_CONFLICT')
         }
 
-        // Start Claude
-        const taskPrompt = prompt || task.prompt
-        claudeService.start(taskId, resolvedWorkdir, taskPrompt)
-
-        // Record PID
-        const pid = terminalService.getPid(taskId)
-        if (pid) {
-          taskService.update(taskId, { pid, workdir: resolvedWorkdir })
+        // Check for branch checkout（失敗してもステータスをdoingにしない）
+        if ('branch' in task && task.branch) {
+          await gitService.checkout(resolvedWorkdir, task.branch)
         }
 
-        // Set up context update forwarding
-        claudeService.onContextUpdate((info) => {
-          if (info.taskId === taskId) {
-            taskService.update(taskId, {
-              contextUsed: info.used,
-              contextLimit: info.limit
-            })
-            const win = getWindow()
-            if (win && !win.isDestroyed()) {
-              win.webContents.send('claude:context-update', info)
-            }
+        // 事前チェックが全て通ってからステータスをdoingに変更
+        taskService.update(taskId, { status: 'doing' })
+
+        try {
+          // Start Claude
+          const taskPrompt = prompt || task.prompt
+          claudeService.start(taskId, resolvedWorkdir, taskPrompt)
+
+          // Record PID
+          const pid = terminalService.getPid(taskId)
+          if (pid) {
+            taskService.update(taskId, { pid, workdir: resolvedWorkdir })
           }
-        })
+
+          // Set up context update forwarding
+          claudeService.onContextUpdate((info) => {
+            if (info.taskId === taskId) {
+              taskService.update(taskId, {
+                contextUsed: info.used,
+                contextLimit: info.limit
+              })
+              const win = getWindow()
+              if (win && !win.isDestroyed()) {
+                win.webContents.send('claude:context-update', info)
+              }
+            }
+          })
+        } catch (startError) {
+          // Claudeの起動に失敗したらステータスを元に戻す
+          taskService.update(taskId, { status: 'will_do' })
+          throw startError
+        }
       } catch (error) {
         throw new Error(`Failed to start Claude: ${(error as Error).message}`)
       }

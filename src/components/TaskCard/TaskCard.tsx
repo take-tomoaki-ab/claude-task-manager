@@ -29,21 +29,31 @@ export default function TaskCard({ task }: Props) {
 
   const [conflictOpen, setConflictOpen] = useState(false)
   const [conflictingTask, setConflictingTask] = useState<RuntimeTask | null>(null)
+  const [startError, setStartError] = useState<string | null>(null)
 
   const depTask = task.depends_on ? tasks.find((t) => t.id === task.depends_on) : null
   const depBlocked = depTask ? depTask.status !== 'done' : false
 
   const handleStart = async () => {
-    const result = await startTask(task.id)
-    if (result.conflict && result.conflictingTask) {
-      setConflictingTask(result.conflictingTask)
-      setConflictOpen(true)
+    setStartError(null)
+    try {
+      const result = await startTask(task.id)
+      if (result.conflict && result.conflictingTask) {
+        setConflictingTask(result.conflictingTask)
+        setConflictOpen(true)
+      }
+    } catch (err) {
+      setStartError((err as Error).message)
     }
   }
 
   const handleForceStart = async () => {
     setConflictOpen(false)
-    await startTask(task.id, true)
+    try {
+      await startTask(task.id, true)
+    } catch (err) {
+      setStartError((err as Error).message)
+    }
   }
 
   const handleComplete = async () => {
@@ -76,6 +86,10 @@ export default function TaskCard({ task }: Props) {
               <p className="text-xs text-gray-400 mb-2">
                 依存: {depTask.title} ({depTask.status})
               </p>
+            )}
+
+            {startError && (
+              <p className="text-xs text-red-400 mb-2 break-all">{startError}</p>
             )}
 
             <div className="flex items-center gap-2 mt-2">

@@ -47,6 +47,12 @@ export class GitService {
 
   async checkout(workdir: string, branch: string): Promise<void> {
     const git = simpleGit(workdir)
-    await git.checkout(branch)
+    try {
+      await git.checkout(branch)
+    } catch {
+      // ローカルにブランチがなければ fetch して再試行（Git DWIMでリモート追跡ブランチを作成）
+      await git.fetch('origin')
+      await git.checkout(branch)
+    }
   }
 }
