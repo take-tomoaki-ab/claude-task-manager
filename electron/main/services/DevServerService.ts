@@ -46,7 +46,8 @@ export class DevServerService {
     const child = spawn(userShell, ['-c', cmdString], {
       cwd: resolvedPath,
       env,
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      detached: true
     })
 
     this.processes.set(k, child)
@@ -81,13 +82,25 @@ export class DevServerService {
   stop(paneId: string, label: string): void {
     const k = this.key(paneId, label)
     const child = this.processes.get(k)
-    if (!child) return
+    if (!child || child.pid == null) return
 
-    child.kill('SIGTERM')
+    const pid = child.pid
+    try {
+      // detached: true で起動したプロセスグループ全体に SIGTERM を送る
+      process.kill(-pid, 'SIGTERM')
+    } catch {
+      this.processes.delete(k)
+      this.notifyChange()
+      return
+    }
 
     setTimeout(() => {
       if (this.processes.has(k)) {
-        child.kill('SIGKILL')
+        try {
+          process.kill(-pid, 'SIGKILL')
+        } catch {
+          // already dead
+        }
         this.processes.delete(k)
         this.notifyChange()
       }
@@ -124,11 +137,23 @@ export class DevServerService {
 
   stopAll(): void {
     for (const [, child] of this.processes) {
-      child.kill('SIGTERM')
+      if (child.pid != null) {
+        try {
+          process.kill(-child.pid, 'SIGTERM')
+        } catch {
+          // already dead
+        }
+      }
     }
     setTimeout(() => {
       for (const [k, child] of this.processes) {
-        child.kill('SIGKILL')
+        if (child.pid != null) {
+          try {
+            process.kill(-child.pid, 'SIGKILL')
+          } catch {
+            // already dead
+          }
+        }
         this.processes.delete(k)
       }
     }, 3000)

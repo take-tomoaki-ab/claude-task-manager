@@ -58,20 +58,29 @@ export default function PaneStatusSidebar() {
             return (
               <div
                 key={ds.label}
-                className="flex items-center gap-1.5 mt-1 pl-2 text-xs cursor-pointer hover:bg-gray-800 rounded py-0.5"
-                onClick={() => toggleServer(pane.id, ds.label)}
-                onDoubleClick={(e) => {
-                  e.stopPropagation()
-                  openDevServerLog(pane.id, ds.label)
-                }}
-                title={status?.port ? `Port: ${status.port}` : undefined}
+                className="flex items-center gap-0.5 mt-1 pl-2 text-xs hover:bg-gray-800 rounded py-0.5 group"
               >
-                <span className={running ? 'text-green-400' : 'text-gray-500'}>
-                  {running ? '\u25CF' : '\u25CB'}
-                </span>
-                <span className={running ? 'text-gray-200' : 'text-gray-500'}>
-                  {ds.label}
-                </span>
+                <button
+                  className="flex items-center gap-1.5 flex-1 cursor-pointer text-left"
+                  onClick={() => toggleServer(pane.id, ds.label)}
+                  title={status?.port ? `Port: ${status.port} — クリックで${running ? '停止' : '起動'}` : `クリックで${running ? '停止' : '起動'}`}
+                >
+                  <span className={running ? 'text-green-400' : 'text-gray-500'}>
+                    {running ? '\u25CF' : '\u25CB'}
+                  </span>
+                  <span className={running ? 'text-gray-200' : 'text-gray-500'}>
+                    {ds.label}
+                  </span>
+                </button>
+                <button
+                  className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gray-200 px-1 transition-opacity"
+                  onClick={() => openDevServerLog(pane.id, ds.label)}
+                  title="ログを開く"
+                >
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M2 2h12v2H2V2zm0 4h12v2H2V6zm0 4h8v2H2v-2z"/>
+                  </svg>
+                </button>
               </div>
             )
           })}
