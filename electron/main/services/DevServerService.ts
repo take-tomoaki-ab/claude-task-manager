@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from 'child_process'
+import { existsSync } from 'fs'
 import type { DevServerConfig, PaneConfig, DevServerStatus } from '../../../src/types/ipc'
 
 export type DevServerChangeCallback = (statuses: DevServerStatus[]) => void
@@ -23,6 +24,12 @@ export class DevServerService {
 
     this.configs.set(k, { paneConfig, serverConfig })
     this.logs.set(k, '')
+
+    if (!existsSync(paneConfig.path)) {
+      this.logs.set(k, `[error] ディレクトリが存在しません: ${paneConfig.path}\n設定画面でpaneのパスを確認してください。\n`)
+      this.notifyChange()
+      return
+    }
 
     // Electronはシェルの環境を継承しないためhomebrew等がPATHに入らない。
     // -l（ログインシェル）は .zprofile 等でexit/execが走り即終了するリスクがあるため
