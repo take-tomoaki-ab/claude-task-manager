@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'child_process'
 import { existsSync } from 'fs'
 import type { DevServerConfig, PaneConfig, DevServerStatus } from '../../../src/types/ipc'
+import { expandPath } from '../utils/path'
 
 export type DevServerChangeCallback = (statuses: DevServerStatus[]) => void
 
@@ -22,11 +23,12 @@ export class DevServerService {
       this.stop(paneConfig.id, serverConfig.label)
     }
 
+    const resolvedPath = expandPath(paneConfig.path)
     this.configs.set(k, { paneConfig, serverConfig })
     this.logs.set(k, '')
 
-    if (!existsSync(paneConfig.path)) {
-      this.logs.set(k, `[error] ディレクトリが存在しません: ${paneConfig.path}\n設定画面でpaneのパスを確認してください。\n`)
+    if (!existsSync(resolvedPath)) {
+      this.logs.set(k, `[error] ディレクトリが存在しません: ${resolvedPath}\n設定画面でpaneのパスを確認してください。\n`)
       this.notifyChange()
       return
     }
@@ -42,7 +44,7 @@ export class DevServerService {
     }
 
     const child = spawn(userShell, ['-c', cmdString], {
-      cwd: paneConfig.path,
+      cwd: resolvedPath,
       env,
       stdio: ['pipe', 'pipe', 'pipe']
     })

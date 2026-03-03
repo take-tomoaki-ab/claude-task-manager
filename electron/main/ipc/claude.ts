@@ -1,4 +1,5 @@
 import { ipcMain, type BrowserWindow } from 'electron'
+import { expandPath } from '../utils/path'
 import type { ClaudeService } from '../services/ClaudeService'
 import type { TaskService } from '../services/TaskService'
 import type { GitService } from '../services/GitService'
@@ -34,12 +35,14 @@ export function registerClaudeHandlers(
         let resolvedWorkdir = workdir
 
         if (task.type === 'chore' && 'directory' in task) {
-          resolvedWorkdir = task.directory
+          resolvedWorkdir = expandPath(task.directory)
         } else if (!resolvedWorkdir) {
           const paneConfig = settings.panes.find((p) => p.id === task.pane)
           if (paneConfig) {
-            resolvedWorkdir = paneConfig.path
+            resolvedWorkdir = expandPath(paneConfig.path)
           }
+        } else {
+          resolvedWorkdir = expandPath(resolvedWorkdir)
         }
 
         // Check for branch checkout
