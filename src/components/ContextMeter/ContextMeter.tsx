@@ -21,8 +21,8 @@ export default function ContextMeter({ taskId, used: initialUsed, limit: initial
   }, [taskId])
 
   useEffect(() => {
-    if (initialUsed !== undefined) setUsed(initialUsed)
-    if (initialLimit !== undefined) setLimit(initialLimit)
+    if (initialUsed != null) setUsed(initialUsed)
+    if (initialLimit != null) setLimit(initialLimit)
   }, [initialUsed, initialLimit])
 
   const percentage = limit > 0 ? Math.round((used / limit) * 100) : 0
