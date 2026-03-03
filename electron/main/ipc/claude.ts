@@ -69,6 +69,14 @@ export function registerClaudeHandlers(
             taskService.update(taskId, { pid, workdir: resolvedWorkdir })
           }
 
+          // PTYデータをレンダラーに転送
+          terminalService.onData(taskId, (data) => {
+            const win = getWindow()
+            if (win && !win.isDestroyed()) {
+              win.webContents.send('terminal:data', { taskId, data })
+            }
+          })
+
           // Set up context update forwarding
           claudeService.onContextUpdate((info) => {
             if (info.taskId === taskId) {
