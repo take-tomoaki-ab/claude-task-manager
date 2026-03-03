@@ -84,6 +84,10 @@ app.whenReady().then(() => {
   // Initialize database
   const db = initDatabase()
 
+  // 起動時にdoingタスクをwill_doに戻す（再起動でPTYセッションが消えるため）
+  db.prepare(`UPDATE tasks SET status = 'will_do' WHERE status = 'doing'`).run()
+  db.prepare(`DELETE FROM task_runtime`).run()
+
   // Initialize services
   const taskService = new TaskService(db)
   const terminalService = new TerminalService()
