@@ -5,10 +5,10 @@ import { useTerminalStore } from '../../stores/terminalStore'
 import ContextMeter from '../ContextMeter/ContextMeter'
 import BranchStatus from '../BranchStatus/BranchStatus'
 import PRStatusBadge from './PRStatusBadge'
-import ConflictWarningModal from '../Common/ConflictWarningModal'
 
 type Props = {
   task: RuntimeTask
+  hasFreePane?: boolean
   onEdit?: (task: RuntimeTask) => void
 }
 
@@ -21,37 +21,23 @@ const TYPE_COLORS: Record<string, string> = {
   chore: 'bg-gray-600'
 }
 
-export default function TaskCard({ task, onEdit }: Props) {
+export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
   const tasks = useTaskStore((s) => s.tasks)
   const startTask = useTaskStore((s) => s.startTask)
   const updateTask = useTaskStore((s) => s.updateTask)
   const archiveTask = useTaskStore((s) => s.archiveTask)
   const openTerminal = useTerminalStore((s) => s.openTerminal)
 
-  const [conflictOpen, setConflictOpen] = useState(false)
-  const [conflictingTask, setConflictingTask] = useState<RuntimeTask | null>(null)
   const [startError, setStartError] = useState<string | null>(null)
 
   const depTask = task.depends_on ? tasks.find((t) => t.id === task.depends_on) : null
   const depBlocked = depTask ? depTask.status !== 'done' : false
+  const paneBlocked = task.type !== 'chore' && !hasFreePane
 
   const handleStart = async () => {
     setStartError(null)
     try {
-      const result = await startTask(task.id)
-      if (result.conflict && result.conflictingTask) {
-        setConflictingTask(result.conflictingTask)
-        setConflictOpen(true)
-      }
-    } catch (err) {
-      setStartError((err as Error).message)
-    }
-  }
-
-  const handleForceStart = async () => {
-    setConflictOpen(false)
-    try {
-      await startTask(task.id, true)
+      await startTask(task.id)
     } catch (err) {
       setStartError((err as Error).message)
     }
@@ -96,13 +82,17 @@ export default function TaskCard({ task, onEdit }: Props) {
             <div className="flex items-center gap-2 mt-2">
               <button
                 onClick={handleStart}
-                disabled={depBlocked}
+                disabled={depBlocked || paneBlocked}
                 className={`px-3 py-1 rounded text-xs font-medium ${
-                  depBlocked
+                  depBlocked || paneBlocked
                     ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                     : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
-                title={depBlocked ? '依存タスクが未完了です' : undefined}
+                title={
+                  depBlocked ? '依存タスクが未完了です' :
+                  paneBlocked ? '空きペインがありません' :
+                  undefined
+                }
               >
                 開始
               </button>
@@ -206,12 +196,6 @@ export default function TaskCard({ task, onEdit }: Props) {
         )}
       </div>
 
-      <ConflictWarningModal
-        isOpen={conflictOpen}
-        conflictingTask={conflictingTask}
-        onForce={handleForceStart}
-        onCancel={() => setConflictOpen(false)}
-      />
     </>
   )
 }

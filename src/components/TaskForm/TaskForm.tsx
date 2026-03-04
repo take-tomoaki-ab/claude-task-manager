@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { TaskType, RuntimeTask } from '../../types/task'
 import { useTaskStore } from '../../stores/taskStore'
-import type { PaneConfig } from '../../types/ipc'
 
 type Props = {
   isOpen: boolean
@@ -15,7 +14,6 @@ const INITIAL_FORM = {
   branch: '',
   ticket: '',
   prompt: '',
-  pane: '',
   depends_on: '',
   url: '',
   output: '',
@@ -26,7 +24,6 @@ function taskToForm(task: RuntimeTask) {
   return {
     type: task.type,
     title: task.title,
-    pane: task.pane,
     depends_on: task.depends_on ?? '',
     branch: 'branch' in task ? (task.branch ?? '') : '',
     ticket: 'ticket' in task ? (task.ticket ?? '') : '',
@@ -39,14 +36,12 @@ function taskToForm(task: RuntimeTask) {
 
 export default function TaskForm({ isOpen, onClose, editTask }: Props) {
   const [form, setForm] = useState(INITIAL_FORM)
-  const [panes, setPanes] = useState<PaneConfig[]>([])
   const tasks = useTaskStore((s) => s.tasks)
   const createTask = useTaskStore((s) => s.createTask)
   const updateTask = useTaskStore((s) => s.updateTask)
 
   useEffect(() => {
     if (isOpen) {
-      window.api.settings.get().then((settings) => setPanes(settings.panes))
       setForm(editTask ? taskToForm(editTask) : INITIAL_FORM)
     }
   }, [isOpen, editTask])
@@ -59,13 +54,12 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.title || !form.pane) return
+    if (!form.title) return
 
     if (editTask) {
-      // 編集モード: タイトル・pane・depends_on と型別フィールドを更新
+      // 編集モード: タイトル・depends_on と型別フィールドを更新
       const common = {
         title: form.title,
-        pane: form.pane,
         depends_on: form.depends_on || undefined,
         prompt: form.prompt || undefined,
         branch: form.branch || undefined,
@@ -77,9 +71,10 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
       await updateTask(editTask.id, common)
     } else {
       // 新規作成モード
+      // 新規作成モード: pane は開始時に自動割り当てなので空文字で作成
       const base = {
         title: form.title,
-        pane: form.pane,
+        pane: '',
         status: 'will_do' as const,
         ...(form.depends_on ? { depends_on: form.depends_on } : {})
       }
@@ -229,24 +224,6 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
                 />
               </div>
             )}
-
-            {/* Pane */}
-            <div>
-              <label className={labelClass}>Pane</label>
-              <select
-                value={form.pane}
-                onChange={(e) => set('pane', e.target.value)}
-                className={inputClass}
-                required
-              >
-                <option value="">選択してください</option>
-                {panes.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.id}
-                  </option>
-                ))}
-              </select>
-            </div>
 
             {/* Depends on */}
             <div>

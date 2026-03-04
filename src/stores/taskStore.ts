@@ -12,7 +12,7 @@ type TaskStore = {
   updateTask: (id: string, data: Partial<Task & RuntimeTaskState>) => Promise<void>
   deleteTask: (id: string) => Promise<void>
   archiveTask: (id: string) => Promise<void>
-  startTask: (taskId: string, forceStart?: boolean) => Promise<{ conflict?: boolean; conflictingTask?: RuntimeTask }>
+  startTask: (taskId: string) => Promise<void>
   setSearchQuery: (q: string) => void
   setTypeFilters: (types: TaskType[]) => void
 }
@@ -67,28 +67,16 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     await get().fetchTasks()
   },
 
-  startTask: async (taskId, forceStart) => {
+  startTask: async (taskId) => {
     const { tasks } = get()
     const task = tasks.find((t) => t.id === taskId)
-    if (!task) return {}
+    if (!task) return
 
     const workdir = task.workdir || ''
     const prompt = task.prompt
 
-    try {
-      await window.api.claude.start(taskId, workdir, prompt)
-      await get().fetchTasks()
-      return {}
-    } catch (err: unknown) {
-      const error = err as Error & { conflictingTask?: RuntimeTask }
-      if (error.message === 'PANE_CONFLICT' && !forceStart) {
-        const conflictingTask = error.conflictingTask || tasks.find(
-          (t) => t.pane === task.pane && t.status === 'doing' && t.id !== taskId
-        )
-        return { conflict: true, conflictingTask }
-      }
-      throw err
-    }
+    await window.api.claude.start(taskId, workdir, prompt)
+    await get().fetchTasks()
   },
 
   setSearchQuery: (q) => {

@@ -7,6 +7,7 @@ import TaskForm from '../components/TaskForm/TaskForm'
 import TerminalPanel from '../components/Terminal/TerminalPanel'
 import { useTerminalStore } from '../stores/terminalStore'
 import type { TaskStatus, RuntimeTask } from '../types/task'
+import type { PaneConfig } from '../types/ipc'
 
 const COLUMNS: { status: TaskStatus; label: string; borderColor: string }[] = [
   { status: 'will_do', label: '未実行', borderColor: 'border-t-gray-500' },
@@ -17,13 +18,22 @@ const COLUMNS: { status: TaskStatus; label: string; borderColor: string }[] = [
 export default function DashboardPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<RuntimeTask | null>(null)
+  const [panes, setPanes] = useState<PaneConfig[]>([])
   const fetchTasks = useTaskStore((s) => s.fetchTasks)
   const filteredTasks = useTaskStore((s) => s.filteredTasks)
+  const tasks = useTaskStore((s) => s.tasks)
   const isTerminalOpen = useTerminalStore((s) => s.isOpen)
 
   useEffect(() => {
     fetchTasks()
+    window.api.settings.get().then((s) => setPanes(s.panes))
   }, [fetchTasks])
+
+  // 実行中タスクが占有しているペインを除いた空きペインの有無
+  const occupiedPaneIds = new Set(
+    tasks.filter((t) => t.status === 'doing' && t.pane).map((t) => t.pane)
+  )
+  const hasFreePane = panes.some((p) => !occupiedPaneIds.has(p.id))
 
   return (
     <div className="h-screen flex flex-col">
@@ -51,6 +61,7 @@ export default function DashboardPage() {
                     <TaskCard
                       key={task.id}
                       task={task}
+                      hasFreePane={hasFreePane}
                       onEdit={task.status === 'will_do' ? (t) => { setEditingTask(t); setFormOpen(true) } : undefined}
                     />
                   ))}

@@ -27,27 +27,26 @@ export function registerClaudeHandlers(
           throw new Error(`Task not found: ${taskId}`)
         }
 
-        // Determine workdir from pane config or task fields
         const settings = getSettings()
         let resolvedWorkdir = workdir
+        let assignedPane = task.pane
 
         if (task.type === 'chore' && 'directory' in task) {
+          // chore は directory を直接使用（pane不要）
           resolvedWorkdir = expandPath(task.directory)
-        } else if (!resolvedWorkdir) {
-          const paneConfig = settings.panes.find((p) => p.id === task.pane)
-          if (paneConfig) {
-            resolvedWorkdir = expandPath(paneConfig.path)
-          }
         } else {
-          resolvedWorkdir = expandPath(resolvedWorkdir)
-        }
-
-        // Check if another doing task exists on the same pane
-        const conflicting = tasks.find(
-          (t) => t.id !== taskId && t.pane === task.pane && t.status === 'doing'
-        )
-        if (conflicting) {
-          throw new Error('PANE_CONFLICT')
+          // non-chore: 空きペインを自動割り当て
+          const occupiedPaneIds = new Set(
+            tasks
+              .filter((t) => t.id !== taskId && t.status === 'doing' && t.pane)
+              .map((t) => t.pane)
+          )
+          const freePaneConfig = settings.panes.find((p) => !occupiedPaneIds.has(p.id))
+          if (!freePaneConfig) {
+            throw new Error('NO_FREE_PANE')
+          }
+          assignedPane = freePaneConfig.id
+          resolvedWorkdir = expandPath(freePaneConfig.path)
         }
 
         // Check for branch checkout（失敗してもステータスをdoingにしない）
@@ -55,8 +54,8 @@ export function registerClaudeHandlers(
           await gitService.checkout(resolvedWorkdir, task.branch)
         }
 
-        // 事前チェックが全て通ってからステータスをdoingに変更
-        taskService.update(taskId, { status: 'doing' })
+        // 事前チェックが全て通ってからステータス・paneをdoingに変更
+        taskService.update(taskId, { status: 'doing', pane: assignedPane })
 
         try {
           // Start Claude
