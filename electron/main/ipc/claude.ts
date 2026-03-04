@@ -60,8 +60,9 @@ export function registerClaudeHandlers(
 
         try {
           // Start Claude
-          const taskPrompt = prompt || task.prompt
-          claudeService.start(taskId, resolvedWorkdir, taskPrompt)
+          const taskPrompt = prompt || task.prompt || settings.promptTemplates?.[task.type]
+          const dangerously = settings.useDangerouslySkipPermissions ?? false
+          claudeService.start(taskId, resolvedWorkdir, taskPrompt, dangerously)
 
           // Record PID
           const pid = terminalService.getPid(taskId)

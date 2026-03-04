@@ -34,13 +34,15 @@ function ArgsInput({
   )
 }
 
+const TASK_TYPES = ['feat', 'design', 'review', 'qa', 'research', 'chore'] as const
+
 type DeleteTarget =
   | { kind: 'pane'; paneIndex: number }
   | { kind: 'devserver'; paneIndex: number; dsIndex: number }
 
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const [settings, setSettings] = useState<AppSettings>({ panes: [] })
+  const [settings, setSettings] = useState<AppSettings>({ panes: [], promptTemplates: {} })
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
 
@@ -224,6 +226,48 @@ export default function SettingsPage() {
               </div>
             </div>
           ))}
+        </section>
+
+        {/* Claude 起動オプション */}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-300 mb-2">Claude Code 起動オプション</h2>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={settings.useDangerouslySkipPermissions ?? false}
+              onChange={(e) => setSettings((prev) => ({ ...prev, useDangerouslySkipPermissions: e.target.checked }))}
+              className="w-4 h-4 rounded"
+            />
+            <span className="text-sm text-gray-300">
+              <span className="font-mono text-yellow-400">--dangerously-skip-permissions</span> で起動する
+            </span>
+          </label>
+          <p className="text-xs text-gray-500 mt-1 ml-7">有効にするとパーミッション確認なしで Claude が操作を実行します</p>
+        </section>
+
+        {/* プロンプトテンプレート */}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-300 mb-2">プロンプトテンプレート（タスクタイプ別）</h2>
+          <p className="text-xs text-gray-500 mb-3">タスク開始時に自動送信される初期プロンプト。タスク個別の prompt が優先されます。</p>
+          <div className="space-y-3">
+            {TASK_TYPES.map((type) => (
+              <div key={type}>
+                <label className="block text-xs text-gray-400 mb-1 font-mono">{type}</label>
+                <textarea
+                  value={settings.promptTemplates?.[type] ?? ''}
+                  onChange={(e) =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      promptTemplates: { ...prev.promptTemplates, [type]: e.target.value }
+                    }))
+                  }
+                  placeholder={`${type} タスクの初期プロンプト`}
+                  rows={2}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono"
+                />
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* GitHub PAT */}

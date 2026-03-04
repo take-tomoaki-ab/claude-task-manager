@@ -6,18 +6,27 @@ import { useTerminalStore } from '../../stores/terminalStore'
 
 const PANEL_WIDTH = 480
 
+type TerminalEntry = {
+  terminal: Terminal
+  fitAddon: FitAddon
+  container: HTMLDivElement  // per-task専用コンテナ（使い回す）
+  opened: boolean
+}
+
 export default function TerminalPanel() {
   const isOpen = useTerminalStore((s) => s.isOpen)
   const activeTaskId = useTerminalStore((s) => s.activeTaskId)
   const devServerLogKey = useTerminalStore((s) => s.devServerLogKey)
   const closeTerminal = useTerminalStore((s) => s.closeTerminal)
 
-  const containerRef = useRef<HTMLDivElement>(null)
-  const terminalsRef = useRef<Map<string, { terminal: Terminal; fitAddon: FitAddon }>>(new Map())
-  const currentTermRef = useRef<string | null>(null)
+  // ターミナルコンテンツを表示するpanelコンテナ
+  const panelContainerRef = useRef<HTMLDivElement>(null)
+  // per-task terminalエントリ（dispose しない・使い回す）
+  const terminalsRef = useRef<Map<string, TerminalEntry>>(new Map())
+  const currentTaskRef = useRef<string | null>(null)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
 
-  const getOrCreateTerminal = useCallback((taskId: string) => {
+  const getOrCreateEntry = useCallback((taskId: string): TerminalEntry => {
     const existing = terminalsRef.current.get(taskId)
     if (existing) return existing
 
@@ -33,53 +42,79 @@ export default function TerminalPanel() {
     const fitAddon = new FitAddon()
     terminal.loadAddon(fitAddon)
 
-    const entry = { terminal, fitAddon }
+    // per-task専用コンテナdiv（DOM要素として使い回す）
+    const container = document.createElement('div')
+    container.style.width = '100%'
+    container.style.height = '100%'
+
+    const entry: TerminalEntry = { terminal, fitAddon, container, opened: false }
     terminalsRef.current.set(taskId, entry)
     return entry
   }, [])
 
-  // Mount/unmount terminal when activeTaskId changes
+  // activeTaskId変化 or isOpen変化でターミナルをマウント
   useEffect(() => {
-    if (!isOpen || !activeTaskId || !containerRef.current) return
+    if (!isOpen || !activeTaskId || !panelContainerRef.current) return
 
-    // Detach previous terminal
-    if (currentTermRef.current && currentTermRef.current !== activeTaskId) {
-      const prev = terminalsRef.current.get(currentTermRef.current)
-      if (prev) {
-        // Don't dispose, just detach from DOM
-        const el = containerRef.current.querySelector('.xterm')
-        if (el) el.remove()
+    const panelEl = panelContainerRef.current
+
+    // 前のタスクのコンテナを取り外す（disposeしない）
+    if (currentTaskRef.current && currentTaskRef.current !== activeTaskId) {
+      const prev = terminalsRef.current.get(currentTaskRef.current)
+      if (prev && panelEl.contains(prev.container)) {
+        panelEl.removeChild(prev.container)
       }
     }
 
-    const { terminal, fitAddon } = getOrCreateTerminal(activeTaskId)
-    currentTermRef.current = activeTaskId
+    const entry = getOrCreateEntry(activeTaskId)
+    currentTaskRef.current = activeTaskId
 
-    // Clear container and open terminal
-    containerRef.current.innerHTML = ''
-    terminal.open(containerRef.current)
+    // まだ開いていなければ open する（xterm は1回だけ）
+    if (!panelEl.contains(entry.container)) {
+      panelEl.appendChild(entry.container)
+    }
 
-    // Fit after small delay for layout
+    // xtermがまだopenされていなければopen（1タスクにつき1回のみ）
+    if (!entry.opened) {
+      entry.terminal.open(entry.container)
+      entry.opened = true
+    }
+
     requestAnimationFrame(() => {
       try {
-        fitAddon.fit()
-        window.api.terminal.resize(activeTaskId, terminal.cols, terminal.rows)
+        entry.fitAddon.fit()
+        window.api.terminal.resize(activeTaskId, entry.terminal.cols, entry.terminal.rows)
       } catch {
         // ignore fit errors
       }
     })
 
-    // Key input -> pty
-    const disposable = terminal.onData((data) => {
+    // キー入力 → pty
+    const disposable = entry.terminal.onData((data) => {
       window.api.terminal.write(activeTaskId, data)
     })
 
     return () => {
       disposable.dispose()
     }
-  }, [isOpen, activeTaskId, getOrCreateTerminal])
+  }, [isOpen, activeTaskId, getOrCreateEntry])
 
-  // Subscribe to terminal data
+  // パネルが再表示された時にリサイズ
+  useEffect(() => {
+    if (!isOpen || !activeTaskId) return
+    const entry = terminalsRef.current.get(activeTaskId)
+    if (!entry) return
+    requestAnimationFrame(() => {
+      try {
+        entry.fitAddon.fit()
+        window.api.terminal.resize(activeTaskId, entry.terminal.cols, entry.terminal.rows)
+      } catch {
+        // ignore
+      }
+    })
+  }, [isOpen, activeTaskId])
+
+  // PTYデータ受信 → 該当タスクのxtermに書き込む（パネルが閉じていても受信する）
   useEffect(() => {
     const unsub = window.api.terminal.onData((event) => {
       const entry = terminalsRef.current.get(event.taskId)
@@ -92,10 +127,10 @@ export default function TerminalPanel() {
 
   // ResizeObserver
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!panelContainerRef.current) return
 
     resizeObserverRef.current = new ResizeObserver(() => {
-      if (activeTaskId) {
+      if (activeTaskId && isOpen) {
         const entry = terminalsRef.current.get(activeTaskId)
         if (entry) {
           try {
@@ -108,14 +143,14 @@ export default function TerminalPanel() {
       }
     })
 
-    resizeObserverRef.current.observe(containerRef.current)
+    resizeObserverRef.current.observe(panelContainerRef.current)
 
     return () => {
       resizeObserverRef.current?.disconnect()
     }
-  }, [activeTaskId])
+  }, [activeTaskId, isOpen])
 
-  // Cleanup on unmount
+  // アンマウント時のみdispose（パネルを閉じただけではdisposeしない）
   useEffect(() => {
     return () => {
       terminalsRef.current.forEach(({ terminal }) => terminal.dispose())
@@ -123,12 +158,11 @@ export default function TerminalPanel() {
     }
   }, [])
 
-  if (!isOpen) return null
-
+  // isOpenがfalseの時もコンポーネントは存在し続けてPTYデータを受け取り続ける
   return (
     <div
       className="fixed top-0 right-0 h-full bg-gray-900 border-l border-gray-700 flex flex-col z-40"
-      style={{ width: PANEL_WIDTH }}
+      style={{ width: PANEL_WIDTH, display: isOpen ? 'flex' : 'none' }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
@@ -143,9 +177,9 @@ export default function TerminalPanel() {
         </button>
       </div>
 
-      {/* Content */}
+      {/* ターミナルコンテンツ */}
       {activeTaskId && (
-        <div ref={containerRef} className="flex-1 overflow-hidden" />
+        <div ref={panelContainerRef} className="flex-1 overflow-hidden" />
       )}
 
       {devServerLogKey && (
@@ -184,7 +218,6 @@ function DevServerLogView({ logKey }: { logKey: string }) {
     }
   }, [paneId, label])
 
-  // 新しいログが来たら末尾にスクロール
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [log])

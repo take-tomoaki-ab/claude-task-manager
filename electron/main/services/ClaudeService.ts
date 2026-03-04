@@ -13,14 +13,15 @@ export class ClaudeService {
     this.terminalService = terminalService
   }
 
-  start(taskId: string, workdir: string, prompt?: string): void {
+  start(taskId: string, workdir: string, prompt?: string, dangerously?: boolean): void {
     this.terminalService.start(taskId, workdir)
-    this.terminalService.write(taskId, 'claude\n')
+    const claudeCmd = dangerously ? 'claude --dangerously-skip-permissions\n' : 'claude\n'
+    this.terminalService.write(taskId, claudeCmd)
 
     if (prompt) {
       setTimeout(() => {
         this.terminalService.write(taskId, prompt + '\n')
-      }, 500)
+      }, 2000)
     }
 
     this.notifiedThresholds.set(taskId, new Set())
@@ -37,14 +38,32 @@ export class ClaudeService {
   }
 
   parseContext(taskId: string, data: string): ContextInfo | null {
-    const pattern = /Context window usage:\s*([\d,]+)\s*\/\s*([\d,]+)\s*tokens/
-    const match = data.match(pattern)
-    if (!match) return null
+    // ANSIエスケープシーケンスを除去
+    const clean = data.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '')
 
-    const used = parseInt(match[1].replace(/,/g, ''), 10)
-    const limit = parseInt(match[2].replace(/,/g, ''), 10)
+    const patterns = [
+      // "Context window usage: 75,234 / 100,000 tokens"
+      /[Cc]ontext\s+window\s+usage:\s*([\d,]+)\s*\/\s*([\d,]+)\s*tokens/,
+      // "Context: 75,234 / 100,000 tokens"
+      /[Cc]ontext:\s*([\d,]+)\s*\/\s*([\d,]+)\s*tokens/,
+      // "75% (75,234/100,000 tokens)"
+      /\d+%\s*\(\s*([\d,]+)\s*\/\s*([\d,]+)\s*tokens?\)/i,
+      // "tokens: 75234/100000"
+      /tokens?:?\s*([\d,]+)\s*\/\s*([\d,]+)/i,
+    ]
 
-    return { taskId, used, limit }
+    for (const pattern of patterns) {
+      const match = clean.match(pattern)
+      if (match) {
+        const used = parseInt(match[1].replace(/,/g, ''), 10)
+        const limit = parseInt(match[2].replace(/,/g, ''), 10)
+        if (used > 0 && limit > 0 && used <= limit) {
+          return { taskId, used, limit }
+        }
+      }
+    }
+
+    return null
   }
 
   onContextUpdate(callback: ContextUpdateCallback): () => void {

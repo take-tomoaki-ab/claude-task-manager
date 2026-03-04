@@ -22,5 +22,6 @@ export const useTerminalStore = create<TerminalStore>((set) => ({
     set({ devServerLogKey: `${paneId}:${label}`, isOpen: true, activeTaskId: null }),
 
   closeTerminal: () =>
-    set({ isOpen: false, activeTaskId: null, devServerLogKey: null })
+    // activeTaskId は保持する（再度開いたとき同じセッションを再表示するため）
+    set({ isOpen: false, devServerLogKey: null })
 }))

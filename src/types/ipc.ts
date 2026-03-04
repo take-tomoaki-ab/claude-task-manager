@@ -18,6 +18,8 @@ export type PaneConfig = {
 export type AppSettings = {
   panes: PaneConfig[]
   githubPat?: string  // safeStorageで暗号化して保存
+  useDangerouslySkipPermissions?: boolean  // claude --dangerously-skip-permissions で起動するか
+  promptTemplates?: Record<string, string>  // タスクタイプ別プロンプトテンプレート
 }
 
 // Git status
