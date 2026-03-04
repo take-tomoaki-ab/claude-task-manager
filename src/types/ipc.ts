@@ -20,6 +20,8 @@ export type AppSettings = {
   githubPat?: string  // safeStorageで暗号化して保存
   useDangerouslySkipPermissions?: boolean  // claude --dangerously-skip-permissions で起動するか
   promptTemplates?: Record<string, string>  // タスクタイプ別プロンプトテンプレート
+  backgroundImageDir?: string  // 背景画像ディレクトリ
+  backgroundIntervalSec?: number  // スライドショー間隔（秒）
 }
 
 // Git status
@@ -88,6 +90,10 @@ export type IpcChannels = {
 
   // Shell
   'shell:open-external': [string, void]
+  'shell:list-images': [string, string[]]
+
+  // Dialog
+  'dialog:open-directory': [void, string | null]
 }
 
 // window.api の型定義（preload で expose するもの）
@@ -129,5 +135,9 @@ export type WindowApi = {
   }
   shell: {
     openExternal: (url: string) => Promise<void>
+    listImages: (dir: string) => Promise<string[]>
+  }
+  dialog: {
+    openDirectory: () => Promise<string | null>
   }
 }

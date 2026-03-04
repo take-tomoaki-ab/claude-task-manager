@@ -79,7 +79,14 @@ const api = {
 
   shell: {
     openExternal: (url: string): Promise<void> =>
-      ipcRenderer.invoke('shell:open-external', url)
+      ipcRenderer.invoke('shell:open-external', url),
+    listImages: (dir: string): Promise<string[]> =>
+      ipcRenderer.invoke('shell:list-images', dir)
+  },
+
+  dialog: {
+    openDirectory: (): Promise<string | null> =>
+      ipcRenderer.invoke('dialog:open-directory')
   }
 }
 

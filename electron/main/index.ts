@@ -1,5 +1,6 @@
-import { app, BrowserWindow, shell, ipcMain, safeStorage } from 'electron'
-import { join } from 'path'
+import { app, BrowserWindow, shell, ipcMain, safeStorage, protocol, dialog } from 'electron'
+import { join, extname } from 'path'
+import { readdirSync, readFileSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDatabase, getDatabase } from './db/schema'
 import { TaskService } from './services/TaskService'
@@ -13,6 +14,11 @@ import { registerGitHandlers } from './ipc/git'
 import { registerClaudeHandlers } from './ipc/claude'
 import { registerDevServerHandlers } from './ipc/devServer'
 import type { AppSettings } from '../../src/types/ipc'
+
+// bg:// カスタムプロトコルをセキュアとして登録（app.whenReady より前に必要）
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'bg', privileges: { secure: true, standard: true, supportFetchAPI: true } }
+])
 
 let mainWindow: BrowserWindow | null = null
 let devServerServiceInstance: DevServerService | null = null
@@ -139,6 +145,50 @@ app.whenReady().then(() => {
   // Shell handler
   ipcMain.handle('shell:open-external', async (_, url: string) => {
     await shell.openExternal(url)
+  })
+
+  // 画像ファイル一覧取得
+  const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.bmp'])
+  ipcMain.handle('shell:list-images', async (_, dir: string): Promise<string[]> => {
+    try {
+      return readdirSync(dir)
+        .filter((f) => IMAGE_EXTS.has(extname(f).toLowerCase()))
+        .map((f) => join(dir, f))
+    } catch {
+      return []
+    }
+  })
+
+  // ディレクトリ選択ダイアログ
+  ipcMain.handle('dialog:open-directory', async (): Promise<string | null> => {
+    if (!mainWindow) return null
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory']
+    })
+    return result.canceled ? null : result.filePaths[0]
+  })
+
+  // bg:// プロトコル → ローカル画像ファイルを直接読んで返す
+  const MIME_TYPES: Record<string, string> = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.avif': 'image/avif',
+    '.bmp': 'image/bmp',
+  }
+  protocol.handle('bg', (request) => {
+    try {
+      // bg://local?path=/Users/... 形式でパスを受け取る
+      const filePath = new URL(request.url).searchParams.get('path') ?? ''
+      const data = readFileSync(filePath)
+      const contentType = MIME_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream'
+      return new Response(data, { headers: { 'Content-Type': contentType } })
+    } catch (e) {
+      console.error('[bg] error:', e)
+      return new Response('Not Found', { status: 404 })
+    }
   })
 
   createWindow()

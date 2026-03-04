@@ -283,6 +283,52 @@ export default function SettingsPage() {
           <p className="text-xs text-gray-500 mt-1">PR ステータス取得に使用（暗号化して保存）</p>
         </section>
 
+        {/* 背景画像スライドショー */}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-300 mb-2">背景画像スライドショー</h2>
+          <p className="text-xs text-gray-500 mb-3">指定ディレクトリ内の画像を一定間隔で背景表示します。</p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={settings.backgroundImageDir ?? ''}
+                onChange={(e) => setSettings((prev) => ({ ...prev, backgroundImageDir: e.target.value }))}
+                placeholder="画像ディレクトリのパス"
+                className={`${inputClass} flex-1`}
+              />
+              <button
+                onClick={async () => {
+                  const dir = await window.api.dialog.openDirectory()
+                  if (dir) setSettings((prev) => ({ ...prev, backgroundImageDir: dir }))
+                }}
+                className="px-3 py-1.5 rounded text-sm bg-gray-600 hover:bg-gray-500 text-gray-200 whitespace-nowrap"
+              >
+                フォルダ選択
+              </button>
+              {settings.backgroundImageDir && (
+                <button
+                  onClick={() => setSettings((prev) => ({ ...prev, backgroundImageDir: undefined }))}
+                  className="px-3 py-1.5 rounded text-sm bg-red-600 hover:bg-red-700 text-white"
+                >
+                  解除
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="text-xs text-gray-400 whitespace-nowrap">切替間隔（秒）</label>
+              <input
+                type="number"
+                min={5}
+                value={settings.backgroundIntervalSec ?? 30}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, backgroundIntervalSec: Number(e.target.value) || 30 }))
+                }
+                className={`${inputClass} w-24`}
+              />
+            </div>
+          </div>
+        </section>
+
         {/* Save */}
         <div className="pt-4">
           <button
