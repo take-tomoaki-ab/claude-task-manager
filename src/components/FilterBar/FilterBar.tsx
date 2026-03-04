@@ -67,6 +67,12 @@ export default function FilterBar({ onNewTask }: Props) {
       <div className="flex-1" />
 
       <button
+        onClick={() => navigate('/archive')}
+        className="px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-sm text-gray-300"
+      >
+        アーカイブ
+      </button>
+      <button
         onClick={() => navigate('/settings')}
         className="px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-sm text-gray-300"
       >
