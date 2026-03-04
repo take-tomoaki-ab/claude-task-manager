@@ -104,6 +104,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
 
   const inputClass = 'w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500'
   const labelClass = 'block text-xs text-gray-400 mb-1'
+  const req = <span className="text-red-400 ml-1">*</span>
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
@@ -135,7 +136,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
 
             {/* Title */}
             <div>
-              <label className={labelClass}>タイトル</label>
+              <label className={labelClass}>タイトル{req}</label>
               <input
                 type="text"
                 value={form.title}
@@ -149,36 +150,35 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
             {/* Type-specific fields */}
             {(form.type === 'feat' || form.type === 'qa' || form.type === 'research') && (
               <div>
-                <label className={labelClass}>Branch</label>
+                <label className={labelClass}>Branch{req}</label>
                 <input
                   type="text"
                   value={form.branch}
                   onChange={(e) => set('branch', e.target.value)}
                   placeholder="take/feature-name"
                   className={inputClass}
+                  required
                 />
               </div>
             )}
 
             {(form.type === 'feat' || form.type === 'qa') && (
               <div>
-                <label className={labelClass}>Wrike Ticket URL</label>
+                <label className={labelClass}>Wrike Ticket URL{req}</label>
                 <input
                   type="text"
                   value={form.ticket}
                   onChange={(e) => set('ticket', e.target.value)}
                   placeholder="https://www.wrike.com/..."
                   className={inputClass}
+                  required
                 />
               </div>
             )}
 
             <div>
               <label className={labelClass}>
-                Prompt
-                {(form.type === 'feat' || form.type === 'research') && (
-                  <span className="text-red-400 ml-1">*</span>
-                )}
+                Prompt{(form.type === 'feat' || form.type === 'research') && req}
               </label>
               <textarea
                 value={form.prompt}
@@ -192,39 +192,42 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
 
             {form.type === 'design' && (
               <div>
-                <label className={labelClass}>Output</label>
+                <label className={labelClass}>Output{req}</label>
                 <input
                   type="text"
                   value={form.output}
                   onChange={(e) => set('output', e.target.value)}
                   placeholder="出力先ファイル"
                   className={inputClass}
+                  required
                 />
               </div>
             )}
 
             {form.type === 'review' && (
               <div>
-                <label className={labelClass}>PR URL</label>
+                <label className={labelClass}>PR URL{req}</label>
                 <input
                   type="text"
                   value={form.url}
                   onChange={(e) => set('url', e.target.value)}
                   placeholder="https://github.com/..."
                   className={inputClass}
+                  required
                 />
               </div>
             )}
 
             {form.type === 'chore' && (
               <div>
-                <label className={labelClass}>Directory</label>
+                <label className={labelClass}>Directory{req}</label>
                 <input
                   type="text"
                   value={form.directory}
                   onChange={(e) => set('directory', e.target.value)}
                   placeholder="/path/to/directory"
                   className={inputClass}
+                  required
                 />
               </div>
             )}
