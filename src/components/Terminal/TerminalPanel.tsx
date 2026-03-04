@@ -99,7 +99,7 @@ export default function TerminalPanel() {
     }
   }, [isOpen, activeTaskId, getOrCreateEntry])
 
-  // パネルが再表示された時にリサイズ
+  // パネルが再表示された時にリサイズ＆強制再描画
   useEffect(() => {
     if (!isOpen || !activeTaskId) return
     const entry = terminalsRef.current.get(activeTaskId)
@@ -107,6 +107,7 @@ export default function TerminalPanel() {
     requestAnimationFrame(() => {
       try {
         entry.fitAddon.fit()
+        entry.terminal.refresh(0, entry.terminal.rows - 1)
         window.api.terminal.resize(activeTaskId, entry.terminal.cols, entry.terminal.rows)
       } catch {
         // ignore
@@ -177,10 +178,12 @@ export default function TerminalPanel() {
         </button>
       </div>
 
-      {/* ターミナルコンテンツ */}
-      {activeTaskId && (
-        <div ref={panelContainerRef} className="flex-1 overflow-hidden" />
-      )}
+      {/* ターミナルコンテンツ - 常にDOMに存在させてxterm detach問題を防ぐ */}
+      <div
+        ref={panelContainerRef}
+        className="flex-1 overflow-hidden"
+        style={{ display: activeTaskId && !devServerLogKey ? 'block' : 'none' }}
+      />
 
       {devServerLogKey && (
         <div className="flex-1 overflow-auto p-4">

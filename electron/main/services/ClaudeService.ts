@@ -39,7 +39,11 @@ export class ClaudeService {
 
   parseContext(taskId: string, data: string): ContextInfo | null {
     // ANSIエスケープシーケンスを除去
-    const clean = data.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\x1b\][^\x07]*\x07/g, '')
+    const clean = data
+      .replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')               // CSI sequences
+      .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')   // OSC (BEL or ST terminator)
+      .replace(/\x1b[()][AB012]/g, '')                       // charset sequences
+      .replace(/\r/g, '')                                    // CR
 
     const patterns = [
       // "Context window usage: 75,234 / 100,000 tokens"
@@ -61,6 +65,11 @@ export class ClaudeService {
           return { taskId, used, limit }
         }
       }
+    }
+
+    // デバッグ: tokensという文字列が含まれるがパターンにマッチしなかった場合ログ出力
+    if (/tokens?/i.test(clean)) {
+      console.log('[ClaudeService] context parse miss:', JSON.stringify(clean.slice(0, 200)))
     }
 
     return null
