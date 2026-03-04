@@ -257,7 +257,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
                 className={inputClass}
               >
                 <option value="">なし</option>
-                {tasks.map((t) => (
+                {tasks.filter((t) => t.id !== editTask?.id).map((t) => (
                   <option key={t.id} value={t.id}>
                     [{t.type}] {t.title}
                   </option>
