@@ -5,6 +5,18 @@ import type { TaskService } from '../services/TaskService'
 import type { GitService } from '../services/GitService'
 import type { TerminalService } from '../services/TerminalService'
 import type { AppSettings } from '../../../src/types/ipc'
+import type { Task } from '../../../src/types/task'
+
+function interpolateTemplate(template: string, task: Task): string {
+  const vars: Record<string, string> = { title: task.title }
+  if ('branch' in task) vars['branch'] = task.branch
+  if ('ticket' in task) vars['ticket'] = task.ticket
+  if ('url' in task) vars['pr-url'] = task.url
+  if ('prompt' in task && task.prompt) vars['prompt'] = task.prompt
+  if ('output' in task) vars['output'] = task.output
+  if ('directory' in task) vars['directory'] = task.directory
+  return template.replace(/\{([^}]+)\}/g, (match, key: string) => vars[key] ?? match)
+}
 
 export function registerClaudeHandlers(
   claudeService: ClaudeService,
@@ -59,7 +71,8 @@ export function registerClaudeHandlers(
 
         try {
           // Start Claude
-          const taskPrompt = prompt || task.prompt || settings.promptTemplates?.[task.type]
+          const rawPrompt = prompt || task.prompt || settings.promptTemplates?.[task.type]
+          const taskPrompt = rawPrompt ? interpolateTemplate(rawPrompt, task) : undefined
           const dangerously = settings.useDangerouslySkipPermissions ?? false
           claudeService.start(taskId, resolvedWorkdir, taskPrompt, dangerously)
 

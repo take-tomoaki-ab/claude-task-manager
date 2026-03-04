@@ -248,25 +248,46 @@ export default function SettingsPage() {
         {/* プロンプトテンプレート */}
         <section>
           <h2 className="text-sm font-semibold text-gray-300 mb-2">プロンプトテンプレート（タスクタイプ別）</h2>
-          <p className="text-xs text-gray-500 mb-3">タスク開始時に自動送信される初期プロンプト。タスク個別の prompt が優先されます。</p>
+          <p className="text-xs text-gray-500 mb-3">
+            タスク開始時に自動送信される初期プロンプト。タスク個別の prompt が優先されます。
+            <br />
+            <span className="text-gray-400"><span className="font-mono text-blue-400">{'{title}'}</span> はすべてのタイプで使用可能です。</span>
+          </p>
           <div className="space-y-3">
-            {TASK_TYPES.map((type) => (
-              <div key={type}>
-                <label className="block text-xs text-gray-400 mb-1 font-mono">{type}</label>
-                <textarea
-                  value={settings.promptTemplates?.[type] ?? ''}
-                  onChange={(e) =>
-                    setSettings((prev) => ({
-                      ...prev,
-                      promptTemplates: { ...prev.promptTemplates, [type]: e.target.value }
-                    }))
-                  }
-                  placeholder={`${type} タスクの初期プロンプト`}
-                  rows={2}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono"
-                />
-              </div>
-            ))}
+            {TASK_TYPES.map((type) => {
+              const hints: Record<string, string[]> = {
+                feat: ['{branch}', '{ticket}', '{prompt}'],
+                design: ['{output}'],
+                review: ['{pr-url}'],
+                qa: ['{branch}', '{ticket}'],
+                research: ['{branch}', '{prompt}'],
+                chore: ['{directory}'],
+              }
+              return (
+                <div key={type}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-xs text-gray-400 font-mono">{type}</label>
+                    <span className="text-xs text-gray-600">
+                      {hints[type].map((v) => (
+                        <span key={v} className="font-mono text-blue-500 mr-1">{v}</span>
+                      ))}
+                    </span>
+                  </div>
+                  <textarea
+                    value={settings.promptTemplates?.[type] ?? ''}
+                    onChange={(e) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        promptTemplates: { ...prev.promptTemplates, [type]: e.target.value }
+                      }))
+                    }
+                    placeholder={`${type} タスクの初期プロンプト`}
+                    rows={2}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y font-mono"
+                  />
+                </div>
+              )
+            })}
           </div>
         </section>
 
