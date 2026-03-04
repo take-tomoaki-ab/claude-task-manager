@@ -45,6 +45,8 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
 
   const handleComplete = async () => {
     await updateTask(task.id, { status: 'done', completedAt: new Date().toISOString() })
+    const { activeTaskId, closeTerminal } = useTerminalStore.getState()
+    if (activeTaskId === task.id) closeTerminal()
   }
 
   const handleArchive = async () => {
