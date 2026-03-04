@@ -98,6 +98,13 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
               >
                 開始
               </button>
+              <button
+                onClick={handleComplete}
+                className="px-3 py-1 rounded text-xs bg-green-600 hover:bg-green-700 text-white"
+                title="実行せずに完了にする"
+              >
+                完了
+              </button>
               {onEdit && (
                 <button
                   onClick={() => onEdit(task)}
