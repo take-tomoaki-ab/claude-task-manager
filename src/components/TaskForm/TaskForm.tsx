@@ -83,19 +83,19 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
           await createTask({ ...base, type: 'feat', branch: form.branch, ticket: form.ticket, prompt: form.prompt })
           break
         case 'design':
-          await createTask({ ...base, type: 'design', output: form.output })
+          await createTask({ ...base, type: 'design', output: form.output, prompt: form.prompt || undefined })
           break
         case 'review':
-          await createTask({ ...base, type: 'review', url: form.url })
+          await createTask({ ...base, type: 'review', url: form.url, prompt: form.prompt || undefined })
           break
         case 'qa':
-          await createTask({ ...base, type: 'qa', branch: form.branch, ticket: form.ticket })
+          await createTask({ ...base, type: 'qa', branch: form.branch, ticket: form.ticket, prompt: form.prompt || undefined })
           break
         case 'research':
           await createTask({ ...base, type: 'research', branch: form.branch, prompt: form.prompt })
           break
         case 'chore':
-          await createTask({ ...base, type: 'chore', directory: form.directory })
+          await createTask({ ...base, type: 'chore', directory: form.directory, prompt: form.prompt || undefined })
           break
       }
     }
@@ -173,18 +173,22 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
               </div>
             )}
 
-            {(form.type === 'feat' || form.type === 'research') && (
-              <div>
-                <label className={labelClass}>Prompt</label>
-                <textarea
-                  value={form.prompt}
-                  onChange={(e) => set('prompt', e.target.value)}
-                  placeholder="Claude Codeへの指示..."
-                  rows={3}
-                  className={inputClass}
-                />
-              </div>
-            )}
+            <div>
+              <label className={labelClass}>
+                Prompt
+                {(form.type === 'feat' || form.type === 'research') && (
+                  <span className="text-red-400 ml-1">*</span>
+                )}
+              </label>
+              <textarea
+                value={form.prompt}
+                onChange={(e) => set('prompt', e.target.value)}
+                placeholder="Claude Codeへの指示..."
+                rows={3}
+                className={inputClass}
+                required={form.type === 'feat' || form.type === 'research'}
+              />
+            </div>
 
             {form.type === 'design' && (
               <div>
