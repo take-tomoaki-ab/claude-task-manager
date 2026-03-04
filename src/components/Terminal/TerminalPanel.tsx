@@ -84,6 +84,7 @@ export default function TerminalPanel() {
       try {
         entry.fitAddon.fit()
         window.api.terminal.resize(activeTaskId, entry.terminal.cols, entry.terminal.rows)
+        entry.terminal.focus()
       } catch {
         // ignore fit errors
       }
