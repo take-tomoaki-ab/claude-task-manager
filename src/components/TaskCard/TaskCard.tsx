@@ -9,6 +9,7 @@ import ConflictWarningModal from '../Common/ConflictWarningModal'
 
 type Props = {
   task: RuntimeTask
+  onEdit?: (task: RuntimeTask) => void
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -20,7 +21,7 @@ const TYPE_COLORS: Record<string, string> = {
   chore: 'bg-gray-600'
 }
 
-export default function TaskCard({ task }: Props) {
+export default function TaskCard({ task, onEdit }: Props) {
   const tasks = useTaskStore((s) => s.tasks)
   const startTask = useTaskStore((s) => s.startTask)
   const updateTask = useTaskStore((s) => s.updateTask)
@@ -105,6 +106,14 @@ export default function TaskCard({ task }: Props) {
               >
                 開始
               </button>
+              {onEdit && (
+                <button
+                  onClick={() => onEdit(task)}
+                  className="px-3 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
+                >
+                  編集
+                </button>
+              )}
 
               {task.type === 'feat' && 'ticket' in task && task.ticket && (
                 <button

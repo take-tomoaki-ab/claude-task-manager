@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import type { TaskType } from '../../types/task'
+import type { TaskType, RuntimeTask } from '../../types/task'
 import { useTaskStore } from '../../stores/taskStore'
 import type { PaneConfig } from '../../types/ipc'
 
 type Props = {
   isOpen: boolean
   onClose: () => void
+  editTask?: RuntimeTask  // 指定時は編集モード
 }
 
 const INITIAL_FORM = {
@@ -21,18 +22,34 @@ const INITIAL_FORM = {
   directory: ''
 }
 
-export default function TaskForm({ isOpen, onClose }: Props) {
+function taskToForm(task: RuntimeTask) {
+  return {
+    type: task.type,
+    title: task.title,
+    pane: task.pane,
+    depends_on: task.depends_on ?? '',
+    branch: 'branch' in task ? (task.branch ?? '') : '',
+    ticket: 'ticket' in task ? (task.ticket ?? '') : '',
+    prompt: task.prompt ?? '',
+    url: 'url' in task ? (task.url ?? '') : '',
+    output: 'output' in task ? (task.output ?? '') : '',
+    directory: 'directory' in task ? (task.directory ?? '') : ''
+  }
+}
+
+export default function TaskForm({ isOpen, onClose, editTask }: Props) {
   const [form, setForm] = useState(INITIAL_FORM)
   const [panes, setPanes] = useState<PaneConfig[]>([])
   const tasks = useTaskStore((s) => s.tasks)
   const createTask = useTaskStore((s) => s.createTask)
+  const updateTask = useTaskStore((s) => s.updateTask)
 
   useEffect(() => {
     if (isOpen) {
       window.api.settings.get().then((settings) => setPanes(settings.panes))
-      setForm(INITIAL_FORM)
+      setForm(editTask ? taskToForm(editTask) : INITIAL_FORM)
     }
-  }, [isOpen])
+  }, [isOpen, editTask])
 
   if (!isOpen) return null
 
@@ -44,32 +61,48 @@ export default function TaskForm({ isOpen, onClose }: Props) {
     e.preventDefault()
     if (!form.title || !form.pane) return
 
-    const base = {
-      title: form.title,
-      pane: form.pane,
-      status: 'will_do' as const,
-      ...(form.depends_on ? { depends_on: form.depends_on } : {})
-    }
-
-    switch (form.type) {
-      case 'feat':
-        await createTask({ ...base, type: 'feat', branch: form.branch, ticket: form.ticket, prompt: form.prompt })
-        break
-      case 'design':
-        await createTask({ ...base, type: 'design', output: form.output })
-        break
-      case 'review':
-        await createTask({ ...base, type: 'review', url: form.url })
-        break
-      case 'qa':
-        await createTask({ ...base, type: 'qa', branch: form.branch, ticket: form.ticket })
-        break
-      case 'research':
-        await createTask({ ...base, type: 'research', branch: form.branch, prompt: form.prompt })
-        break
-      case 'chore':
-        await createTask({ ...base, type: 'chore', directory: form.directory })
-        break
+    if (editTask) {
+      // 編集モード: タイトル・pane・depends_on と型別フィールドを更新
+      const common = {
+        title: form.title,
+        pane: form.pane,
+        depends_on: form.depends_on || undefined,
+        prompt: form.prompt || undefined,
+        branch: form.branch || undefined,
+        ticket: form.ticket || undefined,
+        url: form.url || undefined,
+        output: form.output || undefined,
+        directory: form.directory || undefined,
+      }
+      await updateTask(editTask.id, common)
+    } else {
+      // 新規作成モード
+      const base = {
+        title: form.title,
+        pane: form.pane,
+        status: 'will_do' as const,
+        ...(form.depends_on ? { depends_on: form.depends_on } : {})
+      }
+      switch (form.type) {
+        case 'feat':
+          await createTask({ ...base, type: 'feat', branch: form.branch, ticket: form.ticket, prompt: form.prompt })
+          break
+        case 'design':
+          await createTask({ ...base, type: 'design', output: form.output })
+          break
+        case 'review':
+          await createTask({ ...base, type: 'review', url: form.url })
+          break
+        case 'qa':
+          await createTask({ ...base, type: 'qa', branch: form.branch, ticket: form.ticket })
+          break
+        case 'research':
+          await createTask({ ...base, type: 'research', branch: form.branch, prompt: form.prompt })
+          break
+        case 'chore':
+          await createTask({ ...base, type: 'chore', directory: form.directory })
+          break
+      }
     }
     onClose()
   }
@@ -81,24 +114,28 @@ export default function TaskForm({ isOpen, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
       <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit} className="p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">新規タスク</h2>
+          <h2 className="text-lg font-semibold text-white mb-4">{editTask ? 'タスクを編集' : '新規タスク'}</h2>
 
           <div className="space-y-3">
             {/* Type */}
             <div>
               <label className={labelClass}>タイプ</label>
-              <select
-                value={form.type}
-                onChange={(e) => set('type', e.target.value)}
-                className={inputClass}
-              >
-                <option value="feat">feat</option>
-                <option value="design">design</option>
-                <option value="review">review</option>
-                <option value="qa">qa</option>
-                <option value="research">research</option>
-                <option value="chore">chore</option>
-              </select>
+              {editTask ? (
+                <div className={`${inputClass} text-gray-400 cursor-not-allowed`}>{form.type}</div>
+              ) : (
+                <select
+                  value={form.type}
+                  onChange={(e) => set('type', e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="feat">feat</option>
+                  <option value="design">design</option>
+                  <option value="review">review</option>
+                  <option value="qa">qa</option>
+                  <option value="research">research</option>
+                  <option value="chore">chore</option>
+                </select>
+              )}
             </div>
 
             {/* Title */}
@@ -241,7 +278,7 @@ export default function TaskForm({ isOpen, onClose }: Props) {
               type="submit"
               className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm"
             >
-              作成
+              {editTask ? '保存' : '作成'}
             </button>
           </div>
         </form>

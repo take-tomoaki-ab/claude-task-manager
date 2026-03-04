@@ -6,7 +6,7 @@ import TaskCard from '../components/TaskCard/TaskCard'
 import TaskForm from '../components/TaskForm/TaskForm'
 import TerminalPanel from '../components/Terminal/TerminalPanel'
 import { useTerminalStore } from '../stores/terminalStore'
-import type { TaskStatus } from '../types/task'
+import type { TaskStatus, RuntimeTask } from '../types/task'
 
 const COLUMNS: { status: TaskStatus; label: string; borderColor: string }[] = [
   { status: 'will_do', label: '未実行', borderColor: 'border-t-gray-500' },
@@ -16,6 +16,7 @@ const COLUMNS: { status: TaskStatus; label: string; borderColor: string }[] = [
 
 export default function DashboardPage() {
   const [formOpen, setFormOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<RuntimeTask | null>(null)
   const fetchTasks = useTaskStore((s) => s.fetchTasks)
   const filteredTasks = useTaskStore((s) => s.filteredTasks)
   const isTerminalOpen = useTerminalStore((s) => s.isOpen)
@@ -26,7 +27,7 @@ export default function DashboardPage() {
 
   return (
     <div className="h-screen flex flex-col">
-      <FilterBar onNewTask={() => setFormOpen(true)} />
+      <FilterBar onNewTask={() => { setEditingTask(null); setFormOpen(true) }} />
 
       <div className="flex flex-1 overflow-hidden">
         <PaneStatusSidebar />
@@ -47,7 +48,11 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex-1 overflow-y-auto px-3 py-2">
                   {columnTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} />
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onEdit={task.status === 'will_do' ? (t) => { setEditingTask(t); setFormOpen(true) } : undefined}
+                    />
                   ))}
                   {columnTasks.length === 0 && (
                     <p className="text-xs text-gray-600 text-center mt-4">タスクなし</p>
@@ -59,7 +64,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <TaskForm isOpen={formOpen} onClose={() => setFormOpen(false)} />
+      <TaskForm
+        isOpen={formOpen}
+        onClose={() => { setFormOpen(false); setEditingTask(null) }}
+        editTask={editingTask ?? undefined}
+      />
       <TerminalPanel />
     </div>
   )
