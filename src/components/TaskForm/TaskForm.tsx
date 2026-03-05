@@ -39,6 +39,8 @@ function taskToForm(task: RuntimeTask) {
 export default function TaskForm({ isOpen, onClose, editTask }: Props) {
   const [form, setForm] = useState(INITIAL_FORM)
   const [availableBranches, setAvailableBranches] = useState<string[]>([])
+  const [branchSourceDir, setBranchSourceDir] = useState<string>('')
+  const [branchLoadError, setBranchLoadError] = useState<string>('')
   const tasks = useTaskStore((s) => s.tasks)
   const createTask = useTaskStore((s) => s.createTask)
   const updateTask = useTaskStore((s) => s.updateTask)
@@ -46,12 +48,25 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
   useEffect(() => {
     if (isOpen) {
       setForm(editTask ? taskToForm(editTask) : INITIAL_FORM)
+      setAvailableBranches([])
+      setBranchSourceDir('')
+      setBranchLoadError('')
       // フォームが開いたらブランチ一覧を取得（最初のペインから）
       window.api.settings.get().then((settings) => {
         const firstPane = settings.panes[0]
-        if (firstPane?.path) {
-          window.api.git.branches(firstPane.path).then(setAvailableBranches).catch(() => {})
+        if (!firstPane?.path) {
+          setBranchLoadError('設定にペインが未登録です')
+          return
         }
+        setBranchSourceDir(firstPane.path)
+        window.api.git.branches(firstPane.path)
+          .then((branches) => {
+            if (branches.length === 0) {
+              setBranchLoadError('ブランチが取得できませんでした')
+            }
+            setAvailableBranches(branches)
+          })
+          .catch((e: Error) => setBranchLoadError(e.message))
       })
     }
   }, [isOpen, editTask])
@@ -185,6 +200,11 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
                     <option key={b} value={b}>{b}</option>
                   ))}
                 </select>
+                {branchLoadError ? (
+                  <p className="text-xs text-red-400 mt-1">{branchLoadError}</p>
+                ) : branchSourceDir ? (
+                  <p className="text-xs text-gray-500 mt-1">{branchSourceDir} のブランチ一覧</p>
+                ) : null}
               </div>
             )}
 
