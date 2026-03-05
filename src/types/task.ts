@@ -51,6 +51,9 @@ export type ChoreTask = {
 
 export type Task = DesignTask | FeatureTask | ReviewTask | QATask | ResearchTask | ChoreTask
 
+// ユニオン型に対してOmitを分配適用するユーティリティ型
+export type DistributiveOmit<T, K extends keyof any> = T extends unknown ? Omit<T, K> : never
+
 // ランタイム状態（DB の task_runtime テーブルで管理）
 export type RuntimeTaskState = {
   pid?: number

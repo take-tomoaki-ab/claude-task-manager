@@ -1,4 +1,4 @@
-import type { Task, RuntimeTask, ArchiveEntry, RuntimeTaskState } from './task'
+import type { Task, RuntimeTask, ArchiveEntry, RuntimeTaskState, DistributiveOmit } from './task'
 
 // pane設定
 export type DevServerConfig = {
@@ -61,7 +61,7 @@ export type ContextInfo = {
 export type IpcChannels = {
   // Tasks
   'tasks:list': [void, RuntimeTask[]]
-  'tasks:create': [Omit<Task, 'id' | 'created_at'>, RuntimeTask]
+  'tasks:create': [DistributiveOmit<Task, 'id' | 'created_at'>, RuntimeTask]
   'tasks:update': [{ id: string; data: Partial<Task & RuntimeTaskState> }, RuntimeTask]
   'tasks:delete': [string, void]
   'tasks:archive': [string, void]
@@ -106,7 +106,7 @@ export type IpcChannels = {
 export type WindowApi = {
   tasks: {
     list: () => Promise<RuntimeTask[]>
-    create: (task: Omit<Task, 'id' | 'created_at'>) => Promise<RuntimeTask>
+    create: (task: DistributiveOmit<Task, 'id' | 'created_at'>) => Promise<RuntimeTask>
     update: (id: string, data: Partial<Task & RuntimeTaskState>) => Promise<RuntimeTask>
     delete: (id: string) => Promise<void>
     archive: (id: string) => Promise<void>

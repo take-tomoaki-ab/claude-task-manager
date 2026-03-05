@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { RuntimeTask, TaskType, Task, RuntimeTaskState } from '../types/task'
+import type { RuntimeTask, TaskType, Task, RuntimeTaskState, DistributiveOmit } from '../types/task'
 
 type TaskStore = {
   tasks: RuntimeTask[]
@@ -8,7 +8,7 @@ type TaskStore = {
   typeFilters: TaskType[]
 
   fetchTasks: () => Promise<void>
-  createTask: (task: Omit<Task, 'id' | 'created_at'>) => Promise<void>
+  createTask: (task: DistributiveOmit<Task, 'id' | 'created_at'>) => Promise<void>
   updateTask: (id: string, data: Partial<Task & RuntimeTaskState>) => Promise<void>
   deleteTask: (id: string) => Promise<void>
   archiveTask: (id: string) => Promise<void>

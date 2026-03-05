@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { Task, RuntimeTaskState, ArchiveEntry, RuntimeTask } from '../../src/types/task'
+import type { Task, RuntimeTaskState, ArchiveEntry, RuntimeTask, DistributiveOmit } from '../../src/types/task'
 import type {
   AppSettings,
   GitStatusResult,
@@ -11,7 +11,7 @@ import type {
 const api = {
   tasks: {
     list: (): Promise<RuntimeTask[]> => ipcRenderer.invoke('tasks:list'),
-    create: (task: Omit<Task, 'id' | 'created_at'>): Promise<RuntimeTask> =>
+    create: (task: DistributiveOmit<Task, 'id' | 'created_at'>): Promise<RuntimeTask> =>
       ipcRenderer.invoke('tasks:create', task),
     update: (id: string, data: Partial<Task & RuntimeTaskState>): Promise<RuntimeTask> =>
       ipcRenderer.invoke('tasks:update', { id, data }),
