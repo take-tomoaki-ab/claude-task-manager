@@ -8,11 +8,13 @@ import { TerminalService } from './services/TerminalService'
 import { GitService } from './services/GitService'
 import { ClaudeService } from './services/ClaudeService'
 import { DevServerService } from './services/DevServerService'
+import { GitHubService } from './services/GitHubService'
 import { registerTaskHandlers } from './ipc/tasks'
 import { registerTerminalHandlers } from './ipc/terminal'
 import { registerGitHandlers } from './ipc/git'
 import { registerClaudeHandlers } from './ipc/claude'
 import { registerDevServerHandlers } from './ipc/devServer'
+import { registerGitHubHandlers, syncReviewPRs } from './ipc/github'
 import type { AppSettings } from '../../src/types/ipc'
 
 // bg:// カスタムプロトコルをセキュアとして登録（app.whenReady より前に必要）
@@ -23,6 +25,7 @@ protocol.registerSchemesAsPrivileged([
 let mainWindow: BrowserWindow | null = null
 let devServerServiceInstance: DevServerService | null = null
 let terminalServiceInstance: TerminalService | null = null
+let prSyncTimerId: ReturnType<typeof setInterval> | null = null
 
 function getWindow(): BrowserWindow | null {
   return mainWindow
@@ -102,6 +105,7 @@ app.whenReady().then(() => {
   const claudeService = new ClaudeService(terminalService)
   const devServerService = new DevServerService()
   devServerServiceInstance = devServerService
+  const gitHubService = new GitHubService()
 
   // Register IPC handlers
   registerTaskHandlers(taskService)
@@ -116,6 +120,23 @@ app.whenReady().then(() => {
     getSettings
   )
   registerDevServerHandlers(devServerService, getWindow, getSettings)
+  registerGitHubHandlers(gitHubService, taskService, getSettings)
+
+  // PR自動同期タイマー（1分ごとにチェックし、設定された間隔で同期を実行）
+  let lastPrSyncAt = 0
+  prSyncTimerId = setInterval(async () => {
+    const s = getSettings()
+    const intervalMs = (s.githubPrSyncIntervalMin ?? 5) * 60 * 1000
+    const now = Date.now()
+    if (now - lastPrSyncAt >= intervalMs) {
+      lastPrSyncAt = now
+      try {
+        await syncReviewPRs(gitHubService, taskService, getSettings)
+      } catch (err) {
+        console.error('[github:sync-prs] auto-sync error:', err)
+      }
+    }
+  }, 60_000)
 
   // Settings handlers
   ipcMain.handle('settings:get', async () => {
@@ -201,6 +222,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  if (prSyncTimerId) clearInterval(prSyncTimerId)
   devServerServiceInstance?.stopAll()
   terminalServiceInstance?.killAll()
 

@@ -87,6 +87,11 @@ const api = {
   dialog: {
     openDirectory: (): Promise<string | null> =>
       ipcRenderer.invoke('dialog:open-directory')
+  },
+
+  github: {
+    syncPRs: (): Promise<{ created: number; total: number }> =>
+      ipcRenderer.invoke('github:sync-prs')
   }
 }
 

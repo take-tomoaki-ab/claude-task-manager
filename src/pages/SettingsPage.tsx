@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { AppSettings, PaneConfig, DevServerConfig } from '../types/ipc'
 import ConfirmDialog from '../components/Common/ConfirmDialog'
@@ -45,6 +45,8 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>({ panes: [], promptTemplates: {} })
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [prSyncing, setPrSyncing] = useState(false)
+  const [prSyncResult, setPrSyncResult] = useState<{ created: number; total: number } | null>(null)
 
   useEffect(() => {
     window.api.settings.get().then(setSettings)
@@ -119,6 +121,17 @@ export default function SettingsPage() {
     await window.api.settings.set(settings)
     setSaving(false)
   }
+
+  const handleSyncPRs = useCallback(async () => {
+    setPrSyncing(true)
+    setPrSyncResult(null)
+    try {
+      const result = await window.api.github.syncPRs()
+      setPrSyncResult(result)
+    } finally {
+      setPrSyncing(false)
+    }
+  }, [])
 
   const inputClass = 'px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500'
 
@@ -301,7 +314,53 @@ export default function SettingsPage() {
             placeholder="ghp_xxxxxxxxxxxx"
             className={`${inputClass} w-full max-w-md`}
           />
-          <p className="text-xs text-gray-500 mt-1">PR ステータス取得に使用（暗号化して保存）</p>
+          <p className="text-xs text-gray-500 mt-1">PR ステータス取得・レビュー依頼PR同期に使用（暗号化して保存）</p>
+        </section>
+
+        {/* GitHub PR 自動同期 */}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-300 mb-2">GitHub PR レビュー自動同期</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            レビュー依頼されているPRを定期取得し、未起票のものを自動でタスク作成します。
+          </p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <label className="text-xs text-gray-400 whitespace-nowrap w-32">GitHub ユーザー名 *</label>
+              <input
+                type="text"
+                value={settings.githubUsername ?? ''}
+                onChange={(e) => setSettings((prev) => ({ ...prev, githubUsername: e.target.value }))}
+                placeholder="your-github-username"
+                className={`${inputClass} w-64`}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="text-xs text-gray-400 whitespace-nowrap w-32">同期間隔（分）</label>
+              <input
+                type="number"
+                min={1}
+                value={settings.githubPrSyncIntervalMin ?? 5}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, githubPrSyncIntervalMin: Number(e.target.value) || 5 }))
+                }
+                className={`${inputClass} w-24`}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSyncPRs}
+                disabled={prSyncing || !settings.githubUsername || !settings.githubPat}
+                className="px-4 py-1.5 rounded text-sm bg-green-700 hover:bg-green-600 text-white disabled:opacity-40"
+              >
+                {prSyncing ? '同期中...' : '今すぐ同期'}
+              </button>
+              {prSyncResult && (
+                <span className="text-xs text-gray-400">
+                  {prSyncResult.total} 件中 {prSyncResult.created} 件を新規作成
+                </span>
+              )}
+            </div>
+          </div>
         </section>
 
         {/* 背景画像スライドショー */}

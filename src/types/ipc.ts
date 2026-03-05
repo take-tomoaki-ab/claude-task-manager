@@ -18,6 +18,8 @@ export type PaneConfig = {
 export type AppSettings = {
   panes: PaneConfig[]
   githubPat?: string  // safeStorageで暗号化して保存
+  githubUsername?: string  // GitHub ユーザー名（PR自動同期用）
+  githubPrSyncIntervalMin?: number  // PR同期間隔（分、デフォルト5）
   useDangerouslySkipPermissions?: boolean  // claude --dangerously-skip-permissions で起動するか
   promptTemplates?: Record<string, string>  // タスクタイプ別プロンプトテンプレート
   backgroundImageDir?: string  // 背景画像ディレクトリ
@@ -94,6 +96,9 @@ export type IpcChannels = {
 
   // Dialog
   'dialog:open-directory': [void, string | null]
+
+  // GitHub
+  'github:sync-prs': [void, { created: number; total: number }]
 }
 
 // window.api の型定義（preload で expose するもの）
@@ -139,5 +144,8 @@ export type WindowApi = {
   }
   dialog: {
     openDirectory: () => Promise<string | null>
+  }
+  github: {
+    syncPRs: () => Promise<{ created: number; total: number }>
   }
 }
