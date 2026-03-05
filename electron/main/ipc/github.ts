@@ -2,6 +2,7 @@ import { ipcMain, Notification } from 'electron'
 import type { GitHubService } from '../services/GitHubService'
 import type { TaskService } from '../services/TaskService'
 import type { AppSettings } from '../../../src/types/ipc'
+import type { ReviewTask } from '../../../src/types/task'
 
 export function registerGitHubHandlers(
   gitHubService: GitHubService,
@@ -56,7 +57,7 @@ export async function syncReviewPRs(
       title: `[${pr.repositoryName}] #${pr.number} ${pr.title}`,
       pane: '',
       url: pr.html_url
-    })
+    } as Omit<ReviewTask, 'id' | 'created_at'>)
     created++
   }
 
