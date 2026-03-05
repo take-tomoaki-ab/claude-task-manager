@@ -21,6 +21,7 @@ export type DesignTask = {
 export type FeatureTask = {
   type: 'feat'
   branch: string
+  baseBranch?: string  // 分岐元ブランチ
   prompt: string
   ticket: string  // Wrike ticket URL
 } & BaseTask
@@ -33,6 +34,7 @@ export type ReviewTask = {
 export type QATask = {
   type: 'qa'
   branch: string
+  baseBranch?: string  // 分岐元ブランチ
   ticket: string  // Wrike ticket URL
 } & BaseTask
 

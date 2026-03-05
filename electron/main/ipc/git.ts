@@ -15,4 +15,8 @@ export function registerGitHandlers(gitService: GitService): void {
       }
     }
   })
+
+  ipcMain.handle('git:branches', async (_, workdir: string) => {
+    return await gitService.branches(workdir)
+  })
 }

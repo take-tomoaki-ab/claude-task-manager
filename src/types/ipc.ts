@@ -76,6 +76,7 @@ export type IpcChannels = {
 
   // Git
   'git:status': [string, GitStatusResult]
+  'git:branches': [string, string[]]
 
   // Claude
   'claude:start': [{ taskId: string; workdir: string; prompt?: string }, void]
@@ -122,6 +123,7 @@ export type WindowApi = {
   }
   git: {
     status: (workdir: string) => Promise<GitStatusResult>
+    branches: (workdir: string) => Promise<string[]>
   }
   claude: {
     start: (taskId: string, workdir: string, prompt?: string) => Promise<void>

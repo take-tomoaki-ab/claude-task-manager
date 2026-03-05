@@ -45,15 +45,38 @@ export class GitService {
     }
   }
 
-  async checkout(workdir: string, branch: string): Promise<void> {
+  async checkout(workdir: string, branch: string, baseBranch?: string): Promise<void> {
     const git = simpleGit(workdir)
     const branches = await git.branchLocal()
     if (branches.all.includes(branch)) {
       // ローカルに存在 → そのまま切り替え
       await git.checkout(branch)
+    } else if (baseBranch) {
+      // baseBranch から新規作成
+      await git.checkoutBranch(branch, baseBranch)
     } else {
-      // 存在しない → 新規作成
+      // 現在のHEADから新規作成
       await git.checkoutLocalBranch(branch)
+    }
+  }
+
+  async branches(workdir: string): Promise<string[]> {
+    try {
+      const git = simpleGit(workdir)
+      const result = await git.branch(['-a'])
+      const names = new Set<string>()
+      for (const name of result.all) {
+        // remotes/origin/HEAD などは除外
+        if (name.includes('HEAD')) continue
+        if (name.startsWith('remotes/origin/')) {
+          names.add(name.replace('remotes/origin/', ''))
+        } else {
+          names.add(name)
+        }
+      }
+      return Array.from(names).sort()
+    } catch {
+      return []
     }
   }
 }

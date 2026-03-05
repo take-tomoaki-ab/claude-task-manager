@@ -42,7 +42,9 @@ const api = {
 
   git: {
     status: (workdir: string): Promise<GitStatusResult> =>
-      ipcRenderer.invoke('git:status', workdir)
+      ipcRenderer.invoke('git:status', workdir),
+    branches: (workdir: string): Promise<string[]> =>
+      ipcRenderer.invoke('git:branches', workdir)
   },
 
   claude: {

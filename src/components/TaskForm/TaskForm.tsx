@@ -12,6 +12,7 @@ const INITIAL_FORM = {
   type: 'feat' as TaskType,
   title: '',
   branch: '',
+  baseBranch: '',
   ticket: '',
   prompt: '',
   depends_on: '',
@@ -26,6 +27,7 @@ function taskToForm(task: RuntimeTask) {
     title: task.title,
     depends_on: task.depends_on ?? '',
     branch: 'branch' in task ? (task.branch ?? '') : '',
+    baseBranch: ('baseBranch' in task ? (task.baseBranch ?? '') : '') as string,
     ticket: 'ticket' in task ? (task.ticket ?? '') : '',
     prompt: task.prompt ?? '',
     url: 'url' in task ? (task.url ?? '') : '',
@@ -36,6 +38,7 @@ function taskToForm(task: RuntimeTask) {
 
 export default function TaskForm({ isOpen, onClose, editTask }: Props) {
   const [form, setForm] = useState(INITIAL_FORM)
+  const [availableBranches, setAvailableBranches] = useState<string[]>([])
   const tasks = useTaskStore((s) => s.tasks)
   const createTask = useTaskStore((s) => s.createTask)
   const updateTask = useTaskStore((s) => s.updateTask)
@@ -43,6 +46,13 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
   useEffect(() => {
     if (isOpen) {
       setForm(editTask ? taskToForm(editTask) : INITIAL_FORM)
+      // フォームが開いたらブランチ一覧を取得（最初のペインから）
+      window.api.settings.get().then((settings) => {
+        const firstPane = settings.panes[0]
+        if (firstPane?.path) {
+          window.api.git.branches(firstPane.path).then(setAvailableBranches).catch(() => {})
+        }
+      })
     }
   }, [isOpen, editTask])
 
@@ -63,6 +73,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
         depends_on: form.depends_on || undefined,
         prompt: form.prompt || undefined,
         branch: form.branch || undefined,
+        baseBranch: form.baseBranch || undefined,
         ticket: form.ticket || undefined,
         url: form.url || undefined,
         output: form.output || undefined,
@@ -70,7 +81,6 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
       }
       await updateTask(editTask.id, common)
     } else {
-      // 新規作成モード
       // 新規作成モード: pane は開始時に自動割り当てなので空文字で作成
       const base = {
         title: form.title,
@@ -80,7 +90,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
       }
       switch (form.type) {
         case 'feat':
-          await createTask({ ...base, type: 'feat', branch: form.branch, ticket: form.ticket, prompt: form.prompt })
+          await createTask({ ...base, type: 'feat', branch: form.branch, baseBranch: form.baseBranch || undefined, ticket: form.ticket, prompt: form.prompt })
           break
         case 'design':
           await createTask({ ...base, type: 'design', output: form.output, prompt: form.prompt || undefined })
@@ -89,7 +99,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
           await createTask({ ...base, type: 'review', url: form.url, prompt: form.prompt || undefined })
           break
         case 'qa':
-          await createTask({ ...base, type: 'qa', branch: form.branch, ticket: form.ticket, prompt: form.prompt || undefined })
+          await createTask({ ...base, type: 'qa', branch: form.branch, baseBranch: form.baseBranch || undefined, ticket: form.ticket, prompt: form.prompt || undefined })
           break
         case 'research':
           await createTask({ ...base, type: 'research', branch: form.branch, prompt: form.prompt })
@@ -159,6 +169,22 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
                   className={inputClass}
                   required
                 />
+              </div>
+            )}
+
+            {(form.type === 'feat' || form.type === 'qa') && (
+              <div>
+                <label className={labelClass}>分岐元ブランチ</label>
+                <select
+                  value={form.baseBranch}
+                  onChange={(e) => set('baseBranch', e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">現在のHEADから分岐</option>
+                  {availableBranches.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
               </div>
             )}
 

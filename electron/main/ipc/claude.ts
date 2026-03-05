@@ -63,7 +63,8 @@ export function registerClaudeHandlers(
 
         // Check for branch checkout（失敗してもステータスをdoingにしない）
         if ('branch' in task && task.branch) {
-          await gitService.checkout(resolvedWorkdir, task.branch)
+          const baseBranch = 'baseBranch' in task ? task.baseBranch : undefined
+          await gitService.checkout(resolvedWorkdir, task.branch, baseBranch)
         }
 
         // 事前チェックが全て通ってからステータス・paneをdoingに変更
