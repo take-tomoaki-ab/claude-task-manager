@@ -191,6 +191,25 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
               >
                 完了
               </button>
+              {(task.type === 'feat' || task.type === 'qa') && 'ticket' in task && task.ticket && (
+                <button
+                  onClick={() => openLink(task.ticket)}
+                  className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
+                >
+                  Wrike
+                </button>
+              )}
+              {task.type === 'review' && 'url' in task && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openLink(task.url)}
+                    className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  >
+                    PR
+                  </button>
+                  <PRStatusBadge url={task.url} />
+                </div>
+              )}
             </div>
           </div>
         )}
