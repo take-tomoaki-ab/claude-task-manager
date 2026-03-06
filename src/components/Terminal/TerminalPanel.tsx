@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { useTerminalStore } from '../../stores/terminalStore'
+import { useTaskStore } from '../../stores/taskStore'
 
 const PANEL_WIDTH = 480
 
@@ -18,6 +19,9 @@ export default function TerminalPanel() {
   const activeTaskId = useTerminalStore((s) => s.activeTaskId)
   const devServerLogKey = useTerminalStore((s) => s.devServerLogKey)
   const closeTerminal = useTerminalStore((s) => s.closeTerminal)
+
+  const tasks = useTaskStore((s) => s.tasks)
+  const activeTask = activeTaskId ? tasks.find((t) => t.id === activeTaskId) : null
 
   // ターミナルコンテンツを表示するpanelコンテナ
   const panelContainerRef = useRef<HTMLDivElement>(null)
@@ -168,8 +172,17 @@ export default function TerminalPanel() {
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
-        <div className="text-sm font-medium text-white truncate">
-          {activeTaskId ? `Terminal: ${activeTaskId}` : devServerLogKey ? `Log: ${devServerLogKey}` : 'Terminal'}
+        <div className="flex flex-col min-w-0 flex-1">
+          <div className="text-xs text-gray-400 leading-tight">
+            {activeTask ? 'Terminal' : devServerLogKey ? 'Log' : 'Terminal'}
+          </div>
+          <div className="text-sm font-medium text-white truncate">
+            {activeTask
+              ? activeTask.title
+              : devServerLogKey
+              ? devServerLogKey.slice(devServerLogKey.indexOf(':') + 1)
+              : '—'}
+          </div>
         </div>
         <button
           onClick={closeTerminal}

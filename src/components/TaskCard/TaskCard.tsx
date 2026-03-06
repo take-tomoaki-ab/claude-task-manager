@@ -28,6 +28,10 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
   const archiveTask = useTaskStore((s) => s.archiveTask)
   const openTerminal = useTerminalStore((s) => s.openTerminal)
 
+  const activeTaskId = useTerminalStore((s) => s.activeTaskId)
+  const isTerminalOpen = useTerminalStore((s) => s.isOpen)
+  const isHighlighted = isTerminalOpen && activeTaskId === task.id
+
   const [startError, setStartError] = useState<string | null>(null)
 
   const depTask = task.depends_on ? tasks.find((t) => t.id === task.depends_on) : null
@@ -59,7 +63,11 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
 
   return (
     <>
-      <div className="bg-gray-800/55 rounded-lg p-4 shadow mb-3 backdrop-blur-sm">
+      <div className={`rounded-lg p-4 shadow mb-3 backdrop-blur-sm transition-all duration-200 ${
+        isHighlighted
+          ? 'bg-blue-900/60 ring-2 ring-blue-400/70'
+          : 'bg-gray-800/55'
+      }`}>
         {/* Type badge + Title */}
         <div className="flex items-center gap-2 mb-2">
           <span className={`text-xs px-2 py-0.5 rounded text-white font-medium ${TYPE_COLORS[task.type]}`}>
