@@ -1,4 +1,4 @@
-// 既存の /Users/s28773/Desktop/tasks/task.ts をベースにテンプレートリテラル型を除去した型定義
+// タスク型定義（テンプレートリテラル型を除去したシンプルな型）
 
 export type TaskStatus = 'will_do' | 'doing' | 'done'
 export type TaskType = 'feat' | 'design' | 'review' | 'qa' | 'research' | 'chore'
