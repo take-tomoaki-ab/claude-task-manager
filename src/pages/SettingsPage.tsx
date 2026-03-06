@@ -204,20 +204,20 @@ export default function SettingsPage() {
                       value={ds.label}
                       onChange={(e) => updateDevServer(pi, di, { label: e.target.value })}
                       placeholder="Label"
-                      className={`${inputClass} w-24`}
+                      className={`${inputClass} flex-[3] min-w-0`}
                     />
                     <input
                       type="text"
                       value={ds.command}
                       onChange={(e) => updateDevServer(pi, di, { command: e.target.value })}
                       placeholder="Command"
-                      className={`${inputClass} w-24`}
+                      className={`${inputClass} flex-[2] min-w-0`}
                     />
                     <ArgsInput
                       value={ds.args}
                       onChange={(args) => updateDevServer(pi, di, { args })}
                       placeholder="Args (space sep)"
-                      className={`${inputClass} flex-1`}
+                      className={`${inputClass} flex-[3] min-w-0`}
                     />
                     <input
                       type="number"
@@ -226,7 +226,7 @@ export default function SettingsPage() {
                         updateDevServer(pi, di, { port: e.target.value ? Number(e.target.value) : undefined })
                       }
                       placeholder="Port"
-                      className={`${inputClass} w-20`}
+                      className={`${inputClass} flex-[2] min-w-0`}
                     />
                     <button
                       onClick={() => removeDevServer(pi, di)}
