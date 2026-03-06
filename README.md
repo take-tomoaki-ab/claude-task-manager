@@ -113,7 +113,7 @@ feature-name  ↑2 ↓0  (未コミット: 3ファイル)
 1. **pane マッピング**：pane ID と対応するリポジトリの絶対パスを設定
    ```
    p1  →  /Users/yourname/projects/my-app
-   p2  →  /Users/yourname/projects/another-repo
+   p2  →  /Users/yourname/projects/another-worktree
    ```
 2. **開発サーバー**：各 pane で起動可能なサーバーコマンドを設定
 3. **GitHub PAT**：PR ステータスバッジ表示用（`safeStorage` で暗号化保存）
