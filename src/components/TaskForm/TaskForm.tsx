@@ -180,7 +180,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
                   type="text"
                   value={form.branch}
                   onChange={(e) => set('branch', e.target.value)}
-                  placeholder="take/feature-name"
+                  placeholder="feature-name"
                   className={inputClass}
                   required
                 />
