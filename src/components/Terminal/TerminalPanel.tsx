@@ -87,6 +87,7 @@ export default function TerminalPanel() {
     requestAnimationFrame(() => {
       try {
         entry.fitAddon.fit()
+        entry.terminal.scrollToBottom()
         window.api.terminal.resize(activeTaskId, entry.terminal.cols, entry.terminal.rows)
         entry.terminal.focus()
       } catch {
@@ -113,6 +114,7 @@ export default function TerminalPanel() {
       try {
         entry.fitAddon.fit()
         entry.terminal.refresh(0, entry.terminal.rows - 1)
+        entry.terminal.scrollToBottom()
         window.api.terminal.resize(activeTaskId, entry.terminal.cols, entry.terminal.rows)
       } catch {
         // ignore
