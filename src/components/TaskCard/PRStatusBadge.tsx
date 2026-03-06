@@ -4,7 +4,7 @@ type Props = {
   url: string
 }
 
-type PRState = 'open' | 'merged' | 'closed' | null
+type PRState = 'open' | 'draft' | 'merged' | 'closed' | null
 
 function parsePRUrl(url: string): { owner: string; repo: string; number: string } | null {
   const match = url.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/)
@@ -44,6 +44,8 @@ export default function PRStatusBadge({ url }: Props) {
         const data = await res.json()
         if (data.merged) {
           setState('merged')
+        } else if (data.draft) {
+          setState('draft')
         } else {
           setState(data.state as PRState)
         }
@@ -70,6 +72,7 @@ export default function PRStatusBadge({ url }: Props) {
 
   const colors: Record<string, string> = {
     open: 'bg-green-600',
+    draft: 'bg-gray-500',
     merged: 'bg-purple-600',
     closed: 'bg-red-600'
   }
