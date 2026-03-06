@@ -1,0 +1,41 @@
+{
+  "panes": [
+    {
+      "id": "p1",
+      "path": "/path/to/your/project",
+      "devServers": [
+        {
+          "label": "Dev",
+          "command": "npm",
+          "args": ["run", "dev"],
+          "port": 3000
+        },
+        {
+          "label": "Storybook",
+          "command": "npm",
+          "args": ["run", "storybook"],
+          "port": 6006
+        }
+      ]
+    },
+    {
+      "id": "p2",
+      "path": "/path/to/another/project",
+      "devServers": []
+    }
+  ],
+  "githubPat": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "githubUsername": "your-github-username",
+  "githubPrSyncIntervalMin": 5,
+  "useDangerouslySkipPermissions": false,
+  "promptTemplates": {
+    "feat": "以下のタスクを実装してください。\n\nタイトル: {title}\nブランチ: {branch}\nチケット: {ticket}\n\n{prompt}",
+    "design": "以下の設計書を作成してください。\n\nタイトル: {title}\n出力先: {output}",
+    "review": "以下のPRをレビューしてください。\n\nタイトル: {title}\nPR URL: {pr-url}\n\nコードの品質・バグ・セキュリティの観点でレビューしてください。",
+    "qa": "以下のタスクのQAを実施してください。\n\nタイトル: {title}\nブランチ: {branch}\nチケット: {ticket}",
+    "research": "以下のテーマを調査してください。\n\nタイトル: {title}\nブランチ: {branch}\n\n{prompt}",
+    "chore": "以下の作業を実施してください。\n\nタイトル: {title}\nディレクトリ: {directory}"
+  },
+  "backgroundImageDir": "/path/to/your/images",
+  "backgroundIntervalSec": 30
+}
