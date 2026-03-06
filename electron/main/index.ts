@@ -1,6 +1,6 @@
 import { app, BrowserWindow, shell, ipcMain, safeStorage, protocol, dialog } from 'electron'
 import { join, extname } from 'path'
-import { readdirSync, readFileSync } from 'fs'
+import { readdirSync, readFileSync, writeFileSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { initDatabase, getDatabase } from './db/schema'
 import { TaskService } from './services/TaskService'
@@ -187,6 +187,38 @@ app.whenReady().then(() => {
       properties: ['openDirectory']
     })
     return result.canceled ? null : result.filePaths[0]
+  })
+
+  // 設定エクスポート
+  ipcMain.handle('settings:export', async (): Promise<boolean> => {
+    if (!mainWindow) return false
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: 'claude-task-manager-settings.json',
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+    if (result.canceled || !result.filePath) return false
+    const settings = getSettings()
+    writeFileSync(result.filePath, JSON.stringify(settings, null, 2), 'utf-8')
+    return true
+  })
+
+  // 設定インポート
+  ipcMain.handle('settings:import', async (): Promise<AppSettings | null> => {
+    if (!mainWindow) return null
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    const content = readFileSync(result.filePaths[0], 'utf-8')
+    const imported = JSON.parse(content) as Partial<AppSettings>
+    const current = getSettings()
+    const merged = { ...current, ...imported }
+    if (merged.githubPat && safeStorage.isEncryptionAvailable()) {
+      merged.githubPat = safeStorage.encryptString(merged.githubPat).toString('base64')
+    }
+    db.prepare(`INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)`).run('settings', JSON.stringify(merged))
+    return getSettings()
   })
 
   // bg:// プロトコル → ローカル画像ファイルを直接読んで返す

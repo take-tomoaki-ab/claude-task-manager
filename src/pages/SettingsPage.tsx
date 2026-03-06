@@ -47,6 +47,7 @@ export default function SettingsPage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [prSyncing, setPrSyncing] = useState(false)
   const [prSyncResult, setPrSyncResult] = useState<{ created: number; total: number } | null>(null)
+  const [importResult, setImportResult] = useState<'ok' | 'cancelled' | 'error' | null>(null)
 
   useEffect(() => {
     window.api.settings.get().then(setSettings)
@@ -409,8 +410,8 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* Save */}
-        <div className="pt-4">
+        {/* Save / Import / Export */}
+        <div className="pt-4 flex items-center gap-3 flex-wrap">
           <button
             onClick={handleSave}
             disabled={saving}
@@ -418,6 +419,39 @@ export default function SettingsPage() {
           >
             {saving ? '保存中...' : '保存'}
           </button>
+          <button
+            onClick={async () => {
+              await window.api.settings.export()
+            }}
+            className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 text-white text-sm"
+          >
+            エクスポート
+          </button>
+          <button
+            onClick={async () => {
+              setImportResult(null)
+              try {
+                const imported = await window.api.settings.import()
+                if (imported) {
+                  setSettings(imported)
+                  setImportResult('ok')
+                } else {
+                  setImportResult('cancelled')
+                }
+              } catch {
+                setImportResult('error')
+              }
+            }}
+            className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 text-white text-sm"
+          >
+            インポート
+          </button>
+          {importResult === 'ok' && (
+            <span className="text-xs text-green-400">インポート完了！設定を反映しました</span>
+          )}
+          {importResult === 'error' && (
+            <span className="text-xs text-red-400">インポートに失敗しました</span>
+          )}
         </div>
       </div>
 

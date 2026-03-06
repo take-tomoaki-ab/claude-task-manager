@@ -90,6 +90,8 @@ export type IpcChannels = {
   // Settings
   'settings:get': [void, AppSettings]
   'settings:set': [Partial<AppSettings>, void]
+  'settings:export': [void, boolean]
+  'settings:import': [void, AppSettings | null]
 
   // Shell
   'shell:open-external': [string, void]
@@ -139,6 +141,8 @@ export type WindowApi = {
   settings: {
     get: () => Promise<AppSettings>
     set: (settings: Partial<AppSettings>) => Promise<void>
+    export: () => Promise<boolean>
+    import: () => Promise<AppSettings | null>
   }
   shell: {
     openExternal: (url: string) => Promise<void>

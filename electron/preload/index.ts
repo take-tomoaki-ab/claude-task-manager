@@ -76,7 +76,9 @@ const api = {
   settings: {
     get: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
     set: (settings: Partial<AppSettings>): Promise<void> =>
-      ipcRenderer.invoke('settings:set', settings)
+      ipcRenderer.invoke('settings:set', settings),
+    export: (): Promise<boolean> => ipcRenderer.invoke('settings:export'),
+    import: (): Promise<AppSettings | null> => ipcRenderer.invoke('settings:import')
   },
 
   shell: {
