@@ -38,8 +38,9 @@ electron/
       GitService.ts       # simple-git ラッパー
       ClaudeService.ts    # claude起動・コンテキスト解析・通知
       DevServerService.ts # 開発サーバーspawn管理
+      GitHubService.ts    # GitHub API（レビュー依頼PR取得）
     ipc/
-      tasks.ts / terminal.ts / git.ts / claude.ts / devServer.ts
+      tasks.ts / terminal.ts / git.ts / claude.ts / devServer.ts / github.ts
     utils/path.ts         # パスユーティリティ
   preload/index.ts        # contextBridge でwindow.api公開
 src/
@@ -74,10 +75,10 @@ src/
 ### タスク管理
 
 - **6タイプのタスク作成・編集**
-  - `feat`: タイトル / ブランチ* / Wrikeチケット* / プロンプト*
+  - `feat`: タイトル / ブランチ* / 分岐元ブランチ / Wrikeチケット* / プロンプト*
   - `design`: タイトル / 出力パス* / プロンプト
   - `review`: タイトル / PR URL* / プロンプト
-  - `qa`: タイトル / ブランチ* / Wrikeチケット* / プロンプト
+  - `qa`: タイトル / ブランチ* / 分岐元ブランチ / Wrikeチケット* / プロンプト
   - `research`: タイトル / ブランチ* / プロンプト*
   - `chore`: タイトル / ディレクトリ* / プロンプト
 - **編集**: タイプ以外の全フィールドを編集可能
@@ -150,6 +151,15 @@ src/
 - 展開してタイプ・ブランチ・チケット・プロンプト・日時を確認
 - 確認ダイアログ付きで個別削除
 
+### GitHub PR 自動同期
+
+- **レビュー依頼PR自動取得**: GitHub API (`review-requested:<username>`) でオープンなレビュー依頼PRを取得
+- **タスク自動作成**: 既存タスク・アーカイブに存在しないPRを `review` タスクとして自動登録
+- **重複防止**: `url` フィールドで既存・アーカイブ済みを突き合わせて重複を排除
+- **自動同期タイマー**: アプリ起動中1分ごとにチェック、設定間隔（デフォルト5分）で同期実行
+- **手動同期**: 設定画面の「今すぐ同期」ボタンでオンデマンド実行
+- **デスクトップ通知**: 新規タスク作成時に件数を通知
+
 ### 背景画像スライドショー
 
 - 指定ディレクトリ内の画像（jpg/jpeg/png/gif/webp/avif/bmp）をランダムにクロスフェード表示
@@ -165,6 +175,8 @@ src/
 |---|---|
 | `panes` | PaneConfig[] - ID / 絶対パス / devServers |
 | `githubPat` | GitHub PAT（safeStorageで暗号化保存） |
+| `githubUsername` | GitHubユーザー名（PR自動同期用） |
+| `githubPrSyncIntervalMin` | PR自動同期間隔（分、デフォルト5） |
 | `useDangerouslySkipPermissions` | claude起動時に`--dangerously-skip-permissions`を付加 |
 | `promptTemplates` | タスクタイプ別プロンプトテンプレート |
 | `backgroundImageDir` | 背景スライドショー画像ディレクトリ |

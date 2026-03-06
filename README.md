@@ -59,10 +59,10 @@ npm run start
 
 | タイプ | 用途 | フィールド |
 |---|---|---|
-| `feat` | 機能開発 | branch, Wrike ticket URL, prompt |
+| `feat` | 機能開発 | branch, 分岐元ブランチ, Wrike ticket URL, prompt |
 | `design` | 設計 | output 先パス |
 | `review` | PR レビュー | GitHub PR URL |
-| `qa` | QA対応 | branch, Wrike ticket URL |
+| `qa` | QA対応 | branch, 分岐元ブランチ, Wrike ticket URL |
 | `research` | 調査 | branch, prompt |
 | `chore` | 雑務 | 作業ディレクトリ |
 
@@ -103,6 +103,14 @@ feature-name  ↑2 ↓0  (未コミット: 3ファイル)
 
 左サイドバーから pane ごとの開発サーバーを起動・停止。クリック 1 回でトグル。
 
+### GitHub PR 自動同期
+
+GitHub API でレビュー依頼されている PR を定期取得し、未起票のものを `review` タスクとして自動作成。
+
+- 同期間隔は設定画面で変更可能（デフォルト 5 分）
+- 手動で「今すぐ同期」ボタンから即時実行も可能
+- 重複タスク・アーカイブ済みのものは自動スキップ
+
 ### アーカイブ
 
 完了タスクをアーカイブしてダッシュボードを整理。`/archive` 画面で過去のタスクを参照・削除。
@@ -117,7 +125,8 @@ feature-name  ↑2 ↓0  (未コミット: 3ファイル)
    p2  →  /Users/yourname/projects/another-worktree
    ```
 2. **開発サーバー**：各 pane で起動可能なサーバーコマンドを設定
-3. **GitHub PAT**：PR ステータスバッジ表示用（`safeStorage` で暗号化保存）
+3. **GitHub PAT**：PR ステータスバッジ表示・PR 自動同期用（`safeStorage` で暗号化保存）
+4. **GitHub ユーザー名 + 同期間隔**：PR 自動同期の設定
 
 ## ディレクトリ構造
 
