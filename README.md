@@ -48,6 +48,7 @@ npm run dev
 
 ```bash
 npm run build
+npm run start
 ```
 
 ## 機能
@@ -59,9 +60,9 @@ npm run build
 | タイプ | 用途 | フィールド |
 |---|---|---|
 | `feat` | 機能開発 | branch, Wrike ticket URL, prompt |
-| `design` | デザイン作業 | output 先パス |
+| `design` | 設計 | output 先パス |
 | `review` | PR レビュー | GitHub PR URL |
-| `qa` | 品質確認 | branch, Wrike ticket URL |
+| `qa` | QA対応 | branch, Wrike ticket URL |
 | `research` | 調査 | branch, prompt |
 | `chore` | 雑務 | 作業ディレクトリ |
 
