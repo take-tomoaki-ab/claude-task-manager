@@ -22,7 +22,7 @@ export type FeatureTask = {
   type: 'feat'
   branch: string
   baseBranch?: string  // 分岐元ブランチ
-  prompt: string
+  prompt?: string
   ticket: string  // Wrike ticket URL
 } & BaseTask
 
