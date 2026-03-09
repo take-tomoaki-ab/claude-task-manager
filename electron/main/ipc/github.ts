@@ -28,24 +28,14 @@ export async function syncReviewPRs(
 
   const prs = await gitHubService.fetchReviewRequestedPRs(githubUsername, githubPat)
 
-  // 既存タスク（review タイプ）の url を収集
+  // will_do / doing の review タスクの url のみ収集（done・アーカイブは再取得対象）
   const existingTasks = taskService.list()
   const existingUrls = new Set(
     existingTasks
-      .filter((t) => t.type === 'review')
+      .filter((t) => t.type === 'review' && (t.status === 'will_do' || t.status === 'doing'))
       .map((t) => (t as { url?: string }).url)
       .filter(Boolean)
   )
-
-  // アーカイブ済みの url も収集
-  const archived = taskService.listArchived()
-  for (const entry of archived) {
-    const task = entry.task_data
-    if (task.type === 'review') {
-      const url = (task as { url?: string }).url
-      if (url) existingUrls.add(url)
-    }
-  }
 
   let created = 0
   for (const pr of prs) {
