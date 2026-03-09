@@ -242,6 +242,21 @@ export default function SettingsPage() {
           ))}
         </section>
 
+        {/* 通知設定 */}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-300 mb-2">通知</h2>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={settings.notificationsEnabled ?? true}
+              onChange={(e) => setSettings((prev) => ({ ...prev, notificationsEnabled: e.target.checked }))}
+              className="w-4 h-4 rounded"
+            />
+            <span className="text-sm text-gray-300">デスクトップ通知を有効にする</span>
+          </label>
+          <p className="text-xs text-gray-500 mt-1 ml-7">タスク完了・コンテキスト警告・PR同期の通知を表示します</p>
+        </section>
+
         {/* Claude 起動オプション */}
         <section>
           <h2 className="text-sm font-semibold text-gray-300 mb-2">Claude Code 起動オプション</h2>

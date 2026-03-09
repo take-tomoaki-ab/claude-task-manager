@@ -102,13 +102,13 @@ app.whenReady().then(() => {
   const terminalService = new TerminalService()
   terminalServiceInstance = terminalService
   const gitService = new GitService()
-  const claudeService = new ClaudeService(terminalService)
+  const claudeService = new ClaudeService(terminalService, getSettings)
   const devServerService = new DevServerService()
   devServerServiceInstance = devServerService
   const gitHubService = new GitHubService()
 
   // Register IPC handlers
-  registerTaskHandlers(taskService)
+  registerTaskHandlers(taskService, getSettings)
   registerTerminalHandlers(terminalService, getWindow)
   registerGitHandlers(gitService)
   registerClaudeHandlers(

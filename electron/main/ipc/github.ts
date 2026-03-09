@@ -52,10 +52,13 @@ export async function syncReviewPRs(
   }
 
   if (created > 0) {
-    new Notification({
-      title: 'レビュー依頼のPRを検出',
-      body: `${created} 件の新しいレビュー依頼タスクを作成しました`
-    }).show()
+    const { notificationsEnabled = true } = settings
+    if (notificationsEnabled) {
+      new Notification({
+        title: 'レビュー依頼のPRを検出',
+        body: `${created} 件の新しいレビュー依頼タスクを作成しました`
+      }).show()
+    }
   }
 
   return { created, total: prs.length }

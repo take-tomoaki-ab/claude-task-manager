@@ -1,16 +1,21 @@
 import { Notification } from 'electron'
 import type { TerminalService } from './TerminalService'
-import type { ContextInfo } from '../../../src/types/ipc'
+import type { AppSettings, ContextInfo } from '../../../src/types/ipc'
 
 export type ContextUpdateCallback = (info: ContextInfo) => void
 
 export class ClaudeService {
   private terminalService: TerminalService
+  private getSettings: () => Pick<AppSettings, 'notificationsEnabled'>
   private contextCallbacks: Set<ContextUpdateCallback> = new Set()
   private notifiedThresholds: Map<string, Set<number>> = new Map()
 
-  constructor(terminalService: TerminalService) {
+  constructor(
+    terminalService: TerminalService,
+    getSettings: () => Pick<AppSettings, 'notificationsEnabled'>
+  ) {
     this.terminalService = terminalService
+    this.getSettings = getSettings
   }
 
   start(taskId: string, workdir: string, prompt?: string, dangerously?: boolean): void {
@@ -86,6 +91,9 @@ export class ClaudeService {
     const ratio = info.used / info.limit
     const thresholds = this.notifiedThresholds.get(info.taskId)
     if (!thresholds) return
+
+    const { notificationsEnabled = true } = this.getSettings()
+    if (!notificationsEnabled) return
 
     if (ratio >= 0.9 && !thresholds.has(90)) {
       thresholds.add(90)

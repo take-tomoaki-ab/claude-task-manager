@@ -24,6 +24,7 @@ export type AppSettings = {
   promptTemplates?: Record<string, string>  // タスクタイプ別プロンプトテンプレート
   backgroundImageDir?: string  // 背景画像ディレクトリ
   backgroundIntervalSec?: number  // スライドショー間隔（秒）
+  notificationsEnabled?: boolean  // デスクトップ通知を有効にするか（デフォルト: true）
 }
 
 // Git status
