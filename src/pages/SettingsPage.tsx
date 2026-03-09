@@ -34,7 +34,7 @@ function ArgsInput({
   )
 }
 
-const TASK_TYPES = ['feat', 'design', 'review', 'qa', 'research', 'chore'] as const
+const TASK_TYPES = ['feat', 'design', 'review', 'bugfix', 'research', 'chore'] as const
 
 type DeleteTarget =
   | { kind: 'pane'; paneIndex: number }

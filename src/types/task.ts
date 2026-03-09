@@ -1,7 +1,7 @@
 // タスク型定義（テンプレートリテラル型を除去したシンプルな型）
 
 export type TaskStatus = 'will_do' | 'doing' | 'done'
-export type TaskType = 'feat' | 'design' | 'review' | 'qa' | 'research' | 'chore'
+export type TaskType = 'feat' | 'design' | 'review' | 'bugfix' | 'research' | 'chore'
 
 export type BaseTask = {
   id: string
@@ -31,8 +31,8 @@ export type ReviewTask = {
   url: string  // GitHub PR URL
 } & BaseTask
 
-export type QATask = {
-  type: 'qa'
+export type BugfixTask = {
+  type: 'bugfix'
   branch: string
   baseBranch?: string  // 分岐元ブランチ
   ticket: string  // Wrike ticket URL
@@ -49,7 +49,7 @@ export type ChoreTask = {
   directory: string
 } & BaseTask
 
-export type Task = DesignTask | FeatureTask | ReviewTask | QATask | ResearchTask | ChoreTask
+export type Task = DesignTask | FeatureTask | ReviewTask | BugfixTask | ResearchTask | ChoreTask
 
 // ユニオン型に対してOmitを分配適用するユーティリティ型
 export type DistributiveOmit<T, K extends keyof any> = T extends unknown ? Omit<T, K> : never

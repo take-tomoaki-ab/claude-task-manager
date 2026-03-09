@@ -16,7 +16,7 @@ const TYPE_COLORS: Record<string, string> = {
   feat: 'bg-blue-600',
   design: 'bg-purple-600',
   review: 'bg-yellow-600',
-  qa: 'bg-green-600',
+  bugfix: 'bg-green-600',
   research: 'bg-cyan-600',
   chore: 'bg-gray-600'
 }
@@ -130,7 +130,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                   Wrike
                 </button>
               )}
-              {task.type === 'qa' && 'ticket' in task && task.ticket && (
+              {task.type === 'bugfix' && 'ticket' in task && task.ticket && (
                 <button
                   onClick={() => openLink(task.ticket)}
                   className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
@@ -191,7 +191,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
               >
                 完了
               </button>
-              {(task.type === 'feat' || task.type === 'qa') && 'ticket' in task && task.ticket && (
+              {(task.type === 'feat' || task.type === 'bugfix') && 'ticket' in task && task.ticket && (
                 <button
                   onClick={() => openLink(task.ticket)}
                   className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"

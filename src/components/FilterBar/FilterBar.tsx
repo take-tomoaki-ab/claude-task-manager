@@ -6,7 +6,7 @@ const TASK_TYPES: { value: TaskType; label: string; color: string }[] = [
   { value: 'feat', label: 'feat', color: 'bg-blue-600' },
   { value: 'design', label: 'design', color: 'bg-purple-600' },
   { value: 'review', label: 'review', color: 'bg-yellow-600' },
-  { value: 'qa', label: 'qa', color: 'bg-green-600' },
+  { value: 'bugfix', label: 'bugfix', color: 'bg-green-600' },
   { value: 'research', label: 'research', color: 'bg-cyan-600' },
   { value: 'chore', label: 'chore', color: 'bg-gray-600' }
 ]

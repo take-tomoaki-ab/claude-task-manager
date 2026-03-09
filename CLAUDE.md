@@ -78,7 +78,7 @@ src/
   - `feat`: タイトル / ブランチ* / 分岐元ブランチ / Wrikeチケット* / プロンプト*
   - `design`: タイトル / 出力パス* / プロンプト
   - `review`: タイトル / PR URL* / プロンプト
-  - `qa`: タイトル / ブランチ* / 分岐元ブランチ / Wrikeチケット* / プロンプト
+  - `bugfix`: タイトル / ブランチ* / 分岐元ブランチ / Wrikeチケット* / プロンプト
   - `research`: タイトル / ブランチ* / プロンプト*
   - `chore`: タイトル / ディレクトリ* / プロンプト
 - **編集**: タイプ以外の全フィールドを編集可能
@@ -93,7 +93,7 @@ src/
 
 - **タスク開始**:
   - ペイン自動割り当て（最初の空きペイン）
-  - 対象ブランチへの自動チェックアウト（feat / qa / research）
+  - 対象ブランチへの自動チェックアウト（feat / bugfix / research）
   - Claude Code の自動起動（2秒後にプロンプト注入）
   - 依存タスク未完了・空きペインなしの場合はボタン無効化
 - **ペイン競合検出**: 同一ペインに実行中タスクがあれば警告モーダル（強制起動も可）
@@ -114,7 +114,7 @@ src/
   - feat: `{branch}` `{ticket}` `{prompt}`
   - design: `{output}`
   - review: `{pr-url}`
-  - qa: `{branch}` `{ticket}`
+  - bugfix: `{branch}` `{ticket}`
   - research: `{branch}` `{prompt}`
   - chore: `{directory}`
 

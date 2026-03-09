@@ -113,8 +113,8 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
         case 'review':
           await createTask({ ...base, type: 'review', url: form.url, prompt: form.prompt || undefined })
           break
-        case 'qa':
-          await createTask({ ...base, type: 'qa', branch: form.branch, baseBranch: form.baseBranch || undefined, ticket: form.ticket, prompt: form.prompt || undefined })
+        case 'bugfix':
+          await createTask({ ...base, type: 'bugfix', branch: form.branch, baseBranch: form.baseBranch || undefined, ticket: form.ticket, prompt: form.prompt || undefined })
           break
         case 'research':
           await createTask({ ...base, type: 'research', branch: form.branch, prompt: form.prompt })
@@ -152,7 +152,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
                   <option value="feat">feat</option>
                   <option value="design">design</option>
                   <option value="review">review</option>
-                  <option value="qa">qa</option>
+                  <option value="bugfix">bugfix</option>
                   <option value="research">research</option>
                   <option value="chore">chore</option>
                 </select>
@@ -173,7 +173,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
             </div>
 
             {/* Type-specific fields */}
-            {(form.type === 'feat' || form.type === 'qa' || form.type === 'research') && (
+            {(form.type === 'feat' || form.type === 'bugfix' || form.type === 'research') && (
               <div>
                 <label className={labelClass}>Branch{req}</label>
                 <input
@@ -187,7 +187,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
               </div>
             )}
 
-            {(form.type === 'feat' || form.type === 'qa') && (
+            {(form.type === 'feat' || form.type === 'bugfix') && (
               <div>
                 <label className={labelClass}>分岐元ブランチ</label>
                 <select
@@ -208,7 +208,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
               </div>
             )}
 
-            {(form.type === 'feat' || form.type === 'qa') && (
+            {(form.type === 'feat' || form.type === 'bugfix') && (
               <div>
                 <label className={labelClass}>Wrike Ticket URL{req}</label>
                 <input
