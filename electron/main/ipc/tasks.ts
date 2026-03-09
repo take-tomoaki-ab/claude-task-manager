@@ -78,4 +78,20 @@ export function registerTaskHandlers(taskService: TaskService): void {
       throw new Error(`Failed to delete archived task: ${(error as Error).message}`)
     }
   })
+
+  ipcMain.handle('tasks:archive-all-done', async () => {
+    try {
+      return taskService.archiveAllDone()
+    } catch (error) {
+      throw new Error(`Failed to archive all done tasks: ${(error as Error).message}`)
+    }
+  })
+
+  ipcMain.handle('tasks:delete-all-archived', async () => {
+    try {
+      return taskService.deleteAllArchived()
+    } catch (error) {
+      throw new Error(`Failed to delete all archived tasks: ${(error as Error).message}`)
+    }
+  })
 }

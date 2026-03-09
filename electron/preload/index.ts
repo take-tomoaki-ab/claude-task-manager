@@ -19,7 +19,11 @@ const api = {
     archive: (id: string): Promise<void> => ipcRenderer.invoke('tasks:archive', id),
     listArchived: (): Promise<ArchiveEntry[]> => ipcRenderer.invoke('tasks:list-archived'),
     deleteArchived: (id: string): Promise<void> =>
-      ipcRenderer.invoke('tasks:delete-archived', id)
+      ipcRenderer.invoke('tasks:delete-archived', id),
+    archiveAllDone: (): Promise<number> =>
+      ipcRenderer.invoke('tasks:archive-all-done'),
+    deleteAllArchived: (): Promise<number> =>
+      ipcRenderer.invoke('tasks:delete-all-archived')
   },
 
   terminal: {

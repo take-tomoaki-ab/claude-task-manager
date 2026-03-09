@@ -8,6 +8,7 @@ export default function ArchivePage() {
   const [entries, setEntries] = useState<ArchiveEntry[]>([])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [deleteAllConfirm, setDeleteAllConfirm] = useState(false)
 
   const fetchArchives = async () => {
     const archived = await window.api.tasks.listArchived()
@@ -37,6 +38,12 @@ export default function ArchivePage() {
     await fetchArchives()
   }
 
+  const handleDeleteAll = async () => {
+    await window.api.tasks.deleteAllArchived()
+    setDeleteAllConfirm(false)
+    await fetchArchives()
+  }
+
   const TYPE_COLORS: Record<string, string> = {
     feat: 'bg-blue-600',
     design: 'bg-purple-600',
@@ -51,12 +58,22 @@ export default function ArchivePage() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
         <h1 className="text-lg font-semibold text-white">アーカイブ</h1>
-        <button
-          onClick={() => navigate('/')}
-          className="px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-sm text-gray-300"
-        >
-          ダッシュボードに戻る
-        </button>
+        <div className="flex items-center gap-2">
+          {entries.length > 0 && (
+            <button
+              onClick={() => setDeleteAllConfirm(true)}
+              className="px-3 py-1.5 rounded bg-red-700 hover:bg-red-600 text-sm text-white"
+            >
+              全て削除
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/')}
+            className="px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-sm text-gray-300"
+          >
+            ダッシュボードに戻る
+          </button>
+        </div>
       </div>
 
       {/* List */}
@@ -113,6 +130,13 @@ export default function ArchivePage() {
         message="このアーカイブを完全に削除しますか？この操作は元に戻せません。"
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+      <ConfirmDialog
+        isOpen={deleteAllConfirm}
+        title="アーカイブ全件削除"
+        message={`アーカイブ全${entries.length}件を完全に削除しますか？この操作は元に戻せません。`}
+        onConfirm={handleDeleteAll}
+        onCancel={() => setDeleteAllConfirm(false)}
       />
     </div>
   )

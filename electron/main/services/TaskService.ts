@@ -160,6 +160,19 @@ export class TaskService {
     this.db.prepare(`DELETE FROM task_archive WHERE id = ?`).run(id)
   }
 
+  archiveAllDone(): number {
+    const doneTasks = this.list().filter((t) => t.status === 'done')
+    for (const task of doneTasks) {
+      this.archive(task.id)
+    }
+    return doneTasks.length
+  }
+
+  deleteAllArchived(): number {
+    const result = this.db.prepare(`DELETE FROM task_archive`).run()
+    return result.changes
+  }
+
   private getById(id: string): RuntimeTask | null {
     const row = this.db
       .prepare(

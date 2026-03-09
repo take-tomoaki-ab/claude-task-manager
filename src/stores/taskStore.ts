@@ -12,6 +12,7 @@ type TaskStore = {
   updateTask: (id: string, data: Partial<Task & RuntimeTaskState>) => Promise<void>
   deleteTask: (id: string) => Promise<void>
   archiveTask: (id: string) => Promise<void>
+  archiveAllDone: () => Promise<void>
   startTask: (taskId: string) => Promise<void>
   setSearchQuery: (q: string) => void
   setTypeFilters: (types: TaskType[]) => void
@@ -64,6 +65,11 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
   archiveTask: async (id) => {
     await window.api.tasks.archive(id)
+    await get().fetchTasks()
+  },
+
+  archiveAllDone: async () => {
+    await window.api.tasks.archiveAllDone()
     await get().fetchTasks()
   },
 

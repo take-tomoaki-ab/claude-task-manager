@@ -67,6 +67,8 @@ export type IpcChannels = {
   'tasks:archive': [string, void]
   'tasks:list-archived': [void, ArchiveEntry[]]
   'tasks:delete-archived': [string, void]
+  'tasks:archive-all-done': [void, number]
+  'tasks:delete-all-archived': [void, number]
 
   // Terminal
   'terminal:start': [{ taskId: string; workdir: string }, void]
@@ -114,6 +116,8 @@ export type WindowApi = {
     archive: (id: string) => Promise<void>
     listArchived: () => Promise<ArchiveEntry[]>
     deleteArchived: (id: string) => Promise<void>
+    archiveAllDone: () => Promise<number>
+    deleteAllArchived: () => Promise<number>
   }
   terminal: {
     start: (taskId: string, workdir: string) => Promise<void>
