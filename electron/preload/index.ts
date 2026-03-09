@@ -23,7 +23,12 @@ const api = {
     archiveAllDone: (): Promise<number> =>
       ipcRenderer.invoke('tasks:archive-all-done'),
     deleteAllArchived: (): Promise<number> =>
-      ipcRenderer.invoke('tasks:delete-all-archived')
+      ipcRenderer.invoke('tasks:delete-all-archived'),
+    onUpdated: (callback: () => void): (() => void) => {
+      const listener = (): void => callback()
+      ipcRenderer.on('tasks:updated', listener)
+      return () => ipcRenderer.removeListener('tasks:updated', listener)
+    }
   },
 
   terminal: {

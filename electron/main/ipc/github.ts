@@ -1,4 +1,4 @@
-import { ipcMain, Notification } from 'electron'
+import { ipcMain, Notification, type BrowserWindow } from 'electron'
 import type { GitHubService } from '../services/GitHubService'
 import type { TaskService } from '../services/TaskService'
 import type { AppSettings } from '../../../src/types/ipc'
@@ -7,17 +7,20 @@ import type { ReviewTask } from '../../../src/types/task'
 export function registerGitHubHandlers(
   gitHubService: GitHubService,
   taskService: TaskService,
-  getSettings: () => AppSettings
+  getSettings: () => AppSettings,
+  getWindow: () => BrowserWindow | null
 ): void {
   ipcMain.handle('github:sync-prs', async () => {
-    return syncReviewPRs(gitHubService, taskService, getSettings)
+    const result = await syncReviewPRs(gitHubService, taskService, getSettings, getWindow)
+    return result
   })
 }
 
 export async function syncReviewPRs(
   gitHubService: GitHubService,
   taskService: TaskService,
-  getSettings: () => AppSettings
+  getSettings: () => AppSettings,
+  getWindow: () => BrowserWindow | null
 ): Promise<{ created: number; total: number }> {
   const settings = getSettings()
   const { githubPat, githubUsername } = settings
@@ -52,6 +55,8 @@ export async function syncReviewPRs(
   }
 
   if (created > 0) {
+    getWindow()?.webContents.send('tasks:updated')
+
     const { notificationsEnabled = true } = settings
     if (notificationsEnabled) {
       new Notification({

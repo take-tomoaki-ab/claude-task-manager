@@ -120,7 +120,7 @@ app.whenReady().then(() => {
     getSettings
   )
   registerDevServerHandlers(devServerService, getWindow, getSettings)
-  registerGitHubHandlers(gitHubService, taskService, getSettings)
+  registerGitHubHandlers(gitHubService, taskService, getSettings, getWindow)
 
   // PR自動同期タイマー（1分ごとにチェックし、設定された間隔で同期を実行）
   let lastPrSyncAt = 0
@@ -131,7 +131,7 @@ app.whenReady().then(() => {
     if (now - lastPrSyncAt >= intervalMs) {
       lastPrSyncAt = now
       try {
-        await syncReviewPRs(gitHubService, taskService, getSettings)
+        await syncReviewPRs(gitHubService, taskService, getSettings, getWindow)
       } catch (err) {
         console.error('[github:sync-prs] auto-sync error:', err)
       }

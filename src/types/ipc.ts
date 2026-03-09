@@ -119,6 +119,7 @@ export type WindowApi = {
     deleteArchived: (id: string) => Promise<void>
     archiveAllDone: () => Promise<number>
     deleteAllArchived: () => Promise<number>
+    onUpdated: (callback: () => void) => () => void
   }
   terminal: {
     start: (taskId: string, workdir: string) => Promise<void>
