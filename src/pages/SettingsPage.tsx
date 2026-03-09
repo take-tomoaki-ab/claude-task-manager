@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { AppSettings, PaneConfig, DevServerConfig } from '../types/ipc'
 import ConfirmDialog from '../components/Common/ConfirmDialog'
+import Toast from '../components/Common/Toast'
 
 // args配列 ↔ テキスト変換をonBlurで行うinput
 function ArgsInput({
@@ -44,6 +45,7 @@ export default function SettingsPage() {
   const navigate = useNavigate()
   const [settings, setSettings] = useState<AppSettings>({ panes: [], promptTemplates: {} })
   const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [prSyncing, setPrSyncing] = useState(false)
   const [prSyncResult, setPrSyncResult] = useState<{ created: number; total: number } | null>(null)
@@ -119,8 +121,14 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setSaving(true)
-    await window.api.settings.set(settings)
-    setSaving(false)
+    try {
+      await window.api.settings.set(settings)
+      setToast({ message: '設定を保存しました', type: 'success' })
+    } catch {
+      setToast({ message: '保存に失敗しました', type: 'error' })
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSyncPRs = useCallback(async () => {
@@ -450,25 +458,29 @@ export default function SettingsPage() {
                 if (imported) {
                   setSettings(imported)
                   setImportResult('ok')
+                  setToast({ message: 'インポート完了！設定を反映しました', type: 'success' })
                 } else {
                   setImportResult('cancelled')
                 }
               } catch {
                 setImportResult('error')
+                setToast({ message: 'インポートに失敗しました', type: 'error' })
               }
             }}
             className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 text-white text-sm"
           >
             インポート
           </button>
-          {importResult === 'ok' && (
-            <span className="text-xs text-green-400">インポート完了！設定を反映しました</span>
-          )}
-          {importResult === 'error' && (
-            <span className="text-xs text-red-400">インポートに失敗しました</span>
-          )}
         </div>
       </div>
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
       <ConfirmDialog
         isOpen={deleteTarget !== null}
