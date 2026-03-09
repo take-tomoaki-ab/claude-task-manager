@@ -62,7 +62,7 @@ npm run start
 | `feat` | 機能開発 | branch, 分岐元ブランチ, Wrike ticket URL, prompt |
 | `design` | 設計 | output 先パス |
 | `review` | PR レビュー | GitHub PR URL |
-| `qa` | QA対応 | branch, 分岐元ブランチ, Wrike ticket URL |
+| `bugfix` | バグ修正 | branch, 分岐元ブランチ, Wrike ticket URL |
 | `research` | 調査 | branch, prompt |
 | `chore` | 雑務 | 作業ディレクトリ |
 
@@ -175,7 +175,7 @@ cp settings.example.json my-settings.json
     "feat": "以下のタスクを実装してください。\n\nタイトル: {title}\nブランチ: {branch}\nチケット: {ticket}\n\n{prompt}",
     "design": "以下の設計書を作成してください。\n\nタイトル: {title}\n出力先: {output}",
     "review": "以下のPRをレビューしてください。\n\nタイトル: {title}\nPR URL: {pr-url}\n\nコードの品質・バグ・セキュリティの観点でレビューしてください。",
-    "qa": "以下のタスクのQAを実施してください。\n\nタイトル: {title}\nブランチ: {branch}\nチケット: {ticket}",
+    "bugfix": "以下のバグを修正してください。\n\nタイトル: {title}\nブランチ: {branch}\nチケット: {ticket}",
     "research": "以下のテーマを調査してください。\n\nタイトル: {title}\nブランチ: {branch}\n\n{prompt}",
     "chore": "以下の作業を実施してください。\n\nタイトル: {title}\nディレクトリ: {directory}"
   },
@@ -215,8 +215,8 @@ cp settings.example.json my-settings.json
 | 変数 | 対応タイプ | 内容 |
 |---|---|---|
 | `{title}` | 全タイプ | タスクタイトル |
-| `{branch}` | feat / qa / research | ブランチ名 |
-| `{ticket}` | feat / qa | Wrike チケット URL |
+| `{branch}` | feat / bugfix / research | ブランチ名 |
+| `{ticket}` | feat / bugfix | Wrike チケット URL |
 | `{prompt}` | feat / research | タスク固有のプロンプト |
 | `{output}` | design | 出力先パス |
 | `{pr-url}` | review | GitHub PR URL |

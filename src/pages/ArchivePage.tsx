@@ -48,7 +48,7 @@ export default function ArchivePage() {
     feat: 'bg-blue-600',
     design: 'bg-purple-600',
     review: 'bg-yellow-600',
-    qa: 'bg-green-600',
+    bugfix: 'bg-green-600',
     research: 'bg-cyan-600',
     chore: 'bg-gray-600'
   }
