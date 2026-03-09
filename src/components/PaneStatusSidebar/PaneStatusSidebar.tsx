@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import type { PaneConfig, DevServerStatus } from '../../types/ipc'
 import { useTerminalStore } from '../../stores/terminalStore'
+import { useTaskStore } from '../../stores/taskStore'
 
 export default function PaneStatusSidebar() {
   const [panes, setPanes] = useState<PaneConfig[]>([])
   const [serverStatuses, setServerStatuses] = useState<DevServerStatus[]>([])
   const [collapsedPanes, setCollapsedPanes] = useState<Set<string>>(new Set())
   const openDevServerLog = useTerminalStore((s) => s.openDevServerLog)
+  const tasks = useTaskStore((s) => s.tasks)
 
   const toggleCollapse = (paneId: string) => {
     setCollapsedPanes((prev) => {
@@ -48,6 +50,10 @@ export default function PaneStatusSidebar() {
     }
   }
 
+  const getActiveTask = (paneId: string) => {
+    return tasks.find((t) => t.pane === paneId && t.status === 'doing')
+  }
+
   const shortenPath = (p: string): string => {
     const parts = p.split('/')
     if (parts.length <= 3) return p
@@ -65,10 +71,12 @@ export default function PaneStatusSidebar() {
           (ds) => getServerStatus(pane.id, ds.label)?.running,
         )
         const serversToShow = isCollapsed ? runningServers : pane.devServers
+        const activeTask = getActiveTask(pane.id)
+        const isActive = !!activeTask
         return (
-          <div key={pane.id} className="border-b border-gray-800">
+          <div key={pane.id} className={`border-b border-gray-800 ${isActive ? 'bg-blue-950/30' : ''}`}>
             <button
-              className="w-full flex items-center gap-1 px-3 py-2 hover:bg-gray-800 text-left"
+              className={`w-full flex items-center gap-1 px-3 py-2 hover:bg-gray-800 text-left ${isActive ? 'border-l-2 border-blue-400' : 'border-l-2 border-transparent'}`}
               onClick={() => toggleCollapse(pane.id)}
             >
               <svg
@@ -81,10 +89,24 @@ export default function PaneStatusSidebar() {
                 <path d="M0 2.5l5 5 5-5H0z" />
               </svg>
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-white leading-none">{pane.id}</div>
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-sm font-medium leading-none ${isActive ? 'text-blue-300' : 'text-white'}`}>
+                    {pane.id}
+                  </span>
+                  {isActive && (
+                    <span className="inline-flex items-center gap-0.5 text-blue-400" title={`使用中: ${activeTask.title}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse inline-block" />
+                    </span>
+                  )}
+                </div>
                 <div className="text-xs text-gray-500 font-mono truncate mt-0.5" title={pane.path}>
                   {shortenPath(pane.path)}
                 </div>
+                {isActive && (
+                  <div className="text-xs text-blue-400/70 truncate mt-0.5" title={activeTask.title}>
+                    {activeTask.title}
+                  </div>
+                )}
               </div>
               {isCollapsed && runningServers.length > 0 && (
                 <span className="text-green-400 text-xs flex-shrink-0">●{runningServers.length}</span>
