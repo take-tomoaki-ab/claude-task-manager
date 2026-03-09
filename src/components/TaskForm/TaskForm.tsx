@@ -105,7 +105,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
       }
       switch (form.type) {
         case 'feat':
-          await createTask({ ...base, type: 'feat', branch: form.branch, baseBranch: form.baseBranch || undefined, ticket: form.ticket, prompt: form.prompt })
+          await createTask({ ...base, type: 'feat', branch: form.branch, baseBranch: form.baseBranch || undefined, ticket: form.ticket, prompt: form.prompt || undefined })
           break
         case 'design':
           await createTask({ ...base, type: 'design', output: form.output, prompt: form.prompt || undefined })
@@ -224,7 +224,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
 
             <div>
               <label className={labelClass}>
-                Prompt{(form.type === 'feat' || form.type === 'research') && req}
+                Prompt{form.type === 'research' && req}
               </label>
               <textarea
                 value={form.prompt}
@@ -232,7 +232,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
                 placeholder="Claude Codeへの指示..."
                 rows={3}
                 className={inputClass}
-                required={form.type === 'feat' || form.type === 'research'}
+                required={form.type === 'research'}
               />
             </div>
 
