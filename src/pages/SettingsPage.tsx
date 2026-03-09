@@ -273,7 +273,7 @@ export default function SettingsPage() {
                 feat: ['{branch}', '{ticket}', '{prompt}'],
                 design: ['{output}'],
                 review: ['{pr-url}'],
-                qa: ['{branch}', '{ticket}'],
+                bugfix: ['{branch}', '{ticket}'],
                 research: ['{branch}', '{prompt}'],
                 chore: ['{directory}'],
               }
