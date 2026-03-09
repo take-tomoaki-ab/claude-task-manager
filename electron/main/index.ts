@@ -198,7 +198,8 @@ app.whenReady().then(() => {
     })
     if (result.canceled || !result.filePath) return false
     const settings = getSettings()
-    writeFileSync(result.filePath, JSON.stringify(settings, null, 2), 'utf-8')
+    const { githubPat: _omit, ...exportSettings } = settings
+    writeFileSync(result.filePath, JSON.stringify(exportSettings, null, 2), 'utf-8')
     return true
   })
 
