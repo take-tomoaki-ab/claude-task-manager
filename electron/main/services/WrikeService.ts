@@ -2,13 +2,19 @@ export type WrikeTicketInfo = {
   id: string
   title: string
   taskType: 'feat' | 'bugfix' | null
+  customItemTypeId?: string
   url: string
+}
+
+export type WrikeTypeMappings = {
+  featId?: string
+  bugfixId?: string
 }
 
 type WrikeTaskRaw = {
   id: string
   title: string
-  customItemType?: { id: string; name: string }
+  customItemTypeId?: string
 }
 
 export class WrikeService {
@@ -29,19 +35,25 @@ export class WrikeService {
     return null
   }
 
-  private resolveTaskType(customItemType?: { name: string }): 'feat' | 'bugfix' | null {
-    if (!customItemType) return null
-    if (customItemType.name === '実装チケット') return 'feat'
-    if (customItemType.name === 'QA指摘') return 'bugfix'
+  private resolveTaskType(
+    customItemTypeId: string | undefined,
+    mappings: WrikeTypeMappings
+  ): 'feat' | 'bugfix' | null {
+    if (!customItemTypeId) return null
+    if (mappings.featId && customItemTypeId === mappings.featId) return 'feat'
+    if (mappings.bugfixId && customItemTypeId === mappings.bugfixId) return 'bugfix'
     return null
   }
 
-  async fetchTicket(url: string, token: string): Promise<WrikeTicketInfo> {
+  async fetchTicket(
+    url: string,
+    token: string,
+    mappings: WrikeTypeMappings
+  ): Promise<WrikeTicketInfo> {
     const rawId = this.extractTaskId(url)
     if (!rawId) throw new Error('WrikeのURLからタスクIDを取得できませんでした')
 
-    // customItemType フィールド（オブジェクト全体）を1回のリクエストで取得
-    const fields = '["customItemType"]'
+    const fields = '["customItemTypeId"]'
     let res: Response
 
     if (/^\d+$/.test(rawId)) {
@@ -74,7 +86,8 @@ export class WrikeService {
     return {
       id: task.id,
       title: task.title,
-      taskType: this.resolveTaskType(task.customItemType),
+      taskType: this.resolveTaskType(task.customItemTypeId, mappings),
+      customItemTypeId: task.customItemTypeId,
       url,
     }
   }

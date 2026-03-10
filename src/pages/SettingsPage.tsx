@@ -35,6 +35,59 @@ function ArgsInput({
   )
 }
 
+// Wrikeチケットの customItemTypeId を確認するヘルパー
+function WrikeIdChecker({ token, inputClass }: { token?: string; inputClass: string }) {
+  const [url, setUrl] = useState('')
+  const [result, setResult] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
+
+  const handleCheck = async () => {
+    if (!url.trim() || !token) return
+    setChecking(true)
+    setResult(null)
+    try {
+      const info = await window.api.wrike.fetchTicket(url.trim())
+      if (info.customItemTypeId) {
+        setResult(`customItemTypeId: ${info.customItemTypeId}`)
+      } else {
+        setResult('このチケットにはカスタム項目タイプが設定されていません')
+      }
+    } catch (e) {
+      setResult(`エラー: ${(e as Error).message}`)
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  return (
+    <div className="bg-gray-750 border border-gray-700 rounded p-3">
+      <p className="text-xs text-gray-400 mb-2">チケットURLからカスタム項目タイプIDを確認</p>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={url}
+          onChange={(e) => { setUrl(e.target.value); setResult(null) }}
+          placeholder="https://www.wrike.com/open.htm?id=..."
+          className={`${inputClass} flex-1 text-xs`}
+        />
+        <button
+          type="button"
+          onClick={handleCheck}
+          disabled={checking || !url.trim() || !token}
+          className="px-3 py-1.5 rounded text-xs bg-gray-600 hover:bg-gray-500 text-white whitespace-nowrap disabled:opacity-40"
+        >
+          {checking ? '確認中...' : 'ID確認'}
+        </button>
+      </div>
+      {result && (
+        <p className={`text-xs mt-1.5 font-mono ${result.startsWith('エラー') ? 'text-red-400' : 'text-green-400'}`}>
+          {result}
+        </p>
+      )}
+    </div>
+  )
+}
+
 const TASK_TYPES = ['feat', 'design', 'review', 'bugfix', 'research', 'chore'] as const
 
 type DeleteTarget =
@@ -328,21 +381,43 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* Wrike アクセストークン */}
+        {/* Wrike 設定 */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-300 mb-2">Wrike アクセストークン</h2>
-          <input
-            type="password"
-            value={settings.wrikeAccessToken ?? ''}
-            onChange={(e) => setSettings((prev) => ({ ...prev, wrikeAccessToken: e.target.value }))}
-            placeholder="Wrike personal access token"
-            className={`${inputClass} w-full max-w-md`}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Wrikeチケットからタスク自動作成に使用（暗号化して保存）。
-            <br />
-            Wrike設定 &gt; API &gt; Personal access tokens から発行できます。
-          </p>
+          <h2 className="text-sm font-semibold text-gray-300 mb-3">Wrike 連携</h2>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">アクセストークン</label>
+              <input
+                type="password"
+                value={settings.wrikeAccessToken ?? ''}
+                onChange={(e) => setSettings((prev) => ({ ...prev, wrikeAccessToken: e.target.value }))}
+                placeholder="Wrike personal access token"
+                className={`${inputClass} w-full max-w-md`}
+              />
+              <p className="text-xs text-gray-500 mt-1">Wrike設定 &gt; API &gt; Personal access tokens から発行（暗号化保存）</p>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">カスタム項目タイプID（feat）</label>
+              <input
+                type="text"
+                value={settings.wrikeItemTypeFeatId ?? ''}
+                onChange={(e) => setSettings((prev) => ({ ...prev, wrikeItemTypeFeatId: e.target.value }))}
+                placeholder="実装チケット の customItemTypeId"
+                className={`${inputClass} w-full max-w-md`}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">カスタム項目タイプID（bugfix）</label>
+              <input
+                type="text"
+                value={settings.wrikeItemTypeBugfixId ?? ''}
+                onChange={(e) => setSettings((prev) => ({ ...prev, wrikeItemTypeBugfixId: e.target.value }))}
+                placeholder="QA指摘 の customItemTypeId"
+                className={`${inputClass} w-full max-w-md`}
+              />
+            </div>
+            <WrikeIdChecker token={settings.wrikeAccessToken} inputClass={inputClass} />
+          </div>
         </section>
 
         {/* GitHub PAT */}

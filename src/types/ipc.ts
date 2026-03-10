@@ -26,6 +26,8 @@ export type AppSettings = {
   backgroundIntervalSec?: number  // スライドショー間隔（秒）
   notificationsEnabled?: boolean  // デスクトップ通知を有効にするか（デフォルト: true）
   wrikeAccessToken?: string  // Wrike APIアクセストークン（safeStorageで暗号化）
+  wrikeItemTypeFeatId?: string   // "実装チケット" の customItemTypeId
+  wrikeItemTypeBugfixId?: string // "QA指摘" の customItemTypeId
 }
 
 // Wrikeチケット情報
@@ -33,6 +35,7 @@ export type WrikeTicketInfo = {
   id: string
   title: string
   taskType: 'feat' | 'bugfix' | null
+  customItemTypeId?: string  // マッピング未設定時に設定画面で確認できるよう返す
   url: string
 }
 

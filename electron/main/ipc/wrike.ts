@@ -4,13 +4,16 @@ import type { AppSettings } from '../../../src/types/ipc'
 
 export function registerWrikeHandlers(
   wrikeService: WrikeService,
-  getSettings: () => Pick<AppSettings, 'wrikeAccessToken'>
+  getSettings: () => Pick<AppSettings, 'wrikeAccessToken' | 'wrikeItemTypeFeatId' | 'wrikeItemTypeBugfixId'>
 ): void {
   ipcMain.handle('wrike:fetch-ticket', async (_, url: string) => {
-    const { wrikeAccessToken } = getSettings()
+    const { wrikeAccessToken, wrikeItemTypeFeatId, wrikeItemTypeBugfixId } = getSettings()
     if (!wrikeAccessToken) {
       throw new Error('Wrikeアクセストークンが設定されていません')
     }
-    return wrikeService.fetchTicket(url, wrikeAccessToken)
+    return wrikeService.fetchTicket(url, wrikeAccessToken, {
+      featId: wrikeItemTypeFeatId,
+      bugfixId: wrikeItemTypeBugfixId,
+    })
   })
 }
