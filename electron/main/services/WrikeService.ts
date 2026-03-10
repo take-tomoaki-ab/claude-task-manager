@@ -113,17 +113,22 @@ export class WrikeService {
     let taskType: 'feat' | 'bugfix' | null = null
 
     if (customItemTypeId) {
+      // path パラメータではなく全件取得してフィルタ（Wrike API の正しい使い方）
       const citRes = await this.fetchWithAuth(
-        `https://www.wrike.com/api/v4/customitemtypes/${customItemTypeId}`,
+        `https://www.wrike.com/api/v4/customitemtypes`,
         token
       )
-      if (citRes.ok) {
-        const citData = (await citRes.json()) as {
-          data: Array<{ id: string; name: string }>
-        }
-        const typeName = citData.data[0]?.name ?? ''
-        if (typeName === '実装チケット') taskType = 'feat'
-        else if (typeName === 'QA指摘') taskType = 'bugfix'
+      if (!citRes.ok) {
+        const body = await citRes.text()
+        throw new Error(`カスタム項目タイプ取得エラー ${citRes.status}: ${body}`)
+      }
+      const citData = (await citRes.json()) as {
+        data: Array<{ id: string; name: string }>
+      }
+      const matched = citData.data.find((t) => t.id === customItemTypeId)
+      if (matched) {
+        if (matched.name === '実装チケット') taskType = 'feat'
+        else if (matched.name === 'QA指摘') taskType = 'bugfix'
       }
     }
 
