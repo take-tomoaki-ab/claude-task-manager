@@ -41,6 +41,10 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
   const [availableBranches, setAvailableBranches] = useState<string[]>([])
   const [branchSourceDir, setBranchSourceDir] = useState<string>('')
   const [branchLoadError, setBranchLoadError] = useState<string>('')
+  const [wrikeUrl, setWrikeUrl] = useState('')
+  const [wrikeFetching, setWrikeFetching] = useState(false)
+  const [wrikeError, setWrikeError] = useState('')
+  const [wrikeSuccess, setWrikeSuccess] = useState(false)
   const tasks = useTaskStore((s) => s.tasks)
   const createTask = useTaskStore((s) => s.createTask)
   const updateTask = useTaskStore((s) => s.updateTask)
@@ -51,6 +55,9 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
       setAvailableBranches([])
       setBranchSourceDir('')
       setBranchLoadError('')
+      setWrikeUrl('')
+      setWrikeError('')
+      setWrikeSuccess(false)
       // フォームが開いたらブランチ一覧を取得（最初のペインから）
       window.api.settings.get().then((settings) => {
         const firstPane = settings.panes[0]
@@ -75,6 +82,27 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
 
   const set = (key: string, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleWrikeFetch = async () => {
+    if (!wrikeUrl.trim()) return
+    setWrikeFetching(true)
+    setWrikeError('')
+    setWrikeSuccess(false)
+    try {
+      const info = await window.api.wrike.fetchTicket(wrikeUrl.trim())
+      setForm((prev) => ({
+        ...prev,
+        type: info.taskType ?? prev.type,
+        title: info.title,
+        ticket: wrikeUrl.trim(),
+      }))
+      setWrikeSuccess(true)
+    } catch (e) {
+      setWrikeError((e as Error).message)
+    } finally {
+      setWrikeFetching(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -138,6 +166,33 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
           <h2 className="text-lg font-semibold text-white mb-4">{editTask ? 'タスクを編集' : '新規タスク'}</h2>
 
           <div className="space-y-3">
+            {/* Wrike チケットから自動入力（新規作成時のみ） */}
+            {!editTask && (
+              <div className="bg-gray-750 border border-gray-600 rounded p-3">
+                <label className="block text-xs text-gray-400 mb-1.5">Wrikeチケットから自動入力</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={wrikeUrl}
+                    onChange={(e) => { setWrikeUrl(e.target.value); setWrikeSuccess(false); setWrikeError('') }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleWrikeFetch() } }}
+                    placeholder="https://www.wrike.com/open.htm?id=..."
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleWrikeFetch}
+                    disabled={wrikeFetching || !wrikeUrl.trim()}
+                    className="px-3 py-1.5 rounded bg-purple-700 hover:bg-purple-600 text-white text-sm whitespace-nowrap disabled:opacity-40"
+                  >
+                    {wrikeFetching ? '取得中...' : '取得'}
+                  </button>
+                </div>
+                {wrikeError && <p className="text-xs text-red-400 mt-1">{wrikeError}</p>}
+                {wrikeSuccess && <p className="text-xs text-green-400 mt-1">チケット情報を取得しました</p>}
+              </div>
+            )}
+
             {/* Type */}
             <div>
               <label className={labelClass}>タイプ</label>

@@ -25,6 +25,15 @@ export type AppSettings = {
   backgroundImageDir?: string  // 背景画像ディレクトリ
   backgroundIntervalSec?: number  // スライドショー間隔（秒）
   notificationsEnabled?: boolean  // デスクトップ通知を有効にするか（デフォルト: true）
+  wrikeAccessToken?: string  // Wrike APIアクセストークン（safeStorageで暗号化）
+}
+
+// Wrikeチケット情報
+export type WrikeTicketInfo = {
+  id: string
+  title: string
+  taskType: 'feat' | 'bugfix' | null
+  url: string
 }
 
 // Git status
@@ -105,6 +114,9 @@ export type IpcChannels = {
 
   // GitHub
   'github:sync-prs': [void, { created: number; total: number }]
+
+  // Wrike
+  'wrike:fetch-ticket': [string, WrikeTicketInfo]
 }
 
 // window.api の型定義（preload で expose するもの）
@@ -159,5 +171,8 @@ export type WindowApi = {
   }
   github: {
     syncPRs: () => Promise<{ created: number; total: number }>
+  }
+  wrike: {
+    fetchTicket: (url: string) => Promise<WrikeTicketInfo>
   }
 }

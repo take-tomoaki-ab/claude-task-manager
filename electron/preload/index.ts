@@ -105,6 +105,10 @@ const api = {
   github: {
     syncPRs: (): Promise<{ created: number; total: number }> =>
       ipcRenderer.invoke('github:sync-prs')
+  },
+
+  wrike: {
+    fetchTicket: (url: string) => ipcRenderer.invoke('wrike:fetch-ticket', url)
   }
 }
 

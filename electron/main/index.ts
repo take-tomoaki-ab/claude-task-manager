@@ -9,12 +9,14 @@ import { GitService } from './services/GitService'
 import { ClaudeService } from './services/ClaudeService'
 import { DevServerService } from './services/DevServerService'
 import { GitHubService } from './services/GitHubService'
+import { WrikeService } from './services/WrikeService'
 import { registerTaskHandlers } from './ipc/tasks'
 import { registerTerminalHandlers } from './ipc/terminal'
 import { registerGitHandlers } from './ipc/git'
 import { registerClaudeHandlers } from './ipc/claude'
 import { registerDevServerHandlers } from './ipc/devServer'
 import { registerGitHubHandlers, syncReviewPRs } from './ipc/github'
+import { registerWrikeHandlers } from './ipc/wrike'
 import type { AppSettings } from '../../src/types/ipc'
 
 // bg:// カスタムプロトコルをセキュアとして登録（app.whenReady より前に必要）
@@ -48,6 +50,16 @@ function getSettings(): AppSettings {
     try {
       const encrypted = Buffer.from(settings.githubPat, 'base64')
       settings.githubPat = safeStorage.decryptString(encrypted)
+    } catch {
+      // Decryption failed, return as-is
+    }
+  }
+
+  // Decrypt Wrike access token if exists
+  if (settings.wrikeAccessToken && safeStorage.isEncryptionAvailable()) {
+    try {
+      const encrypted = Buffer.from(settings.wrikeAccessToken, 'base64')
+      settings.wrikeAccessToken = safeStorage.decryptString(encrypted)
     } catch {
       // Decryption failed, return as-is
     }
@@ -106,6 +118,7 @@ app.whenReady().then(() => {
   const devServerService = new DevServerService()
   devServerServiceInstance = devServerService
   const gitHubService = new GitHubService()
+  const wrikeService = new WrikeService()
 
   // Register IPC handlers
   registerTaskHandlers(taskService, getSettings)
@@ -121,6 +134,7 @@ app.whenReady().then(() => {
   )
   registerDevServerHandlers(devServerService, getWindow, getSettings)
   registerGitHubHandlers(gitHubService, taskService, getSettings, getWindow)
+  registerWrikeHandlers(wrikeService, getSettings)
 
   // PR自動同期タイマー（1分ごとにチェックし、設定された間隔で同期を実行）
   let lastPrSyncAt = 0
@@ -152,6 +166,13 @@ app.whenReady().then(() => {
       if (merged.githubPat && safeStorage.isEncryptionAvailable()) {
         merged.githubPat = safeStorage
           .encryptString(merged.githubPat)
+          .toString('base64')
+      }
+
+      // Encrypt Wrike access token
+      if (merged.wrikeAccessToken && safeStorage.isEncryptionAvailable()) {
+        merged.wrikeAccessToken = safeStorage
+          .encryptString(merged.wrikeAccessToken)
           .toString('base64')
       }
 
@@ -217,6 +238,9 @@ app.whenReady().then(() => {
     const merged = { ...current, ...imported }
     if (merged.githubPat && safeStorage.isEncryptionAvailable()) {
       merged.githubPat = safeStorage.encryptString(merged.githubPat).toString('base64')
+    }
+    if (merged.wrikeAccessToken && safeStorage.isEncryptionAvailable()) {
+      merged.wrikeAccessToken = safeStorage.encryptString(merged.wrikeAccessToken).toString('base64')
     }
     db.prepare(`INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)`).run('settings', JSON.stringify(merged))
     return getSettings()

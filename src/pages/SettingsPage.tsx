@@ -328,6 +328,23 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {/* Wrike アクセストークン */}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-300 mb-2">Wrike アクセストークン</h2>
+          <input
+            type="password"
+            value={settings.wrikeAccessToken ?? ''}
+            onChange={(e) => setSettings((prev) => ({ ...prev, wrikeAccessToken: e.target.value }))}
+            placeholder="Wrike personal access token"
+            className={`${inputClass} w-full max-w-md`}
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Wrikeチケットからタスク自動作成に使用（暗号化して保存）。
+            <br />
+            Wrike設定 &gt; API &gt; Personal access tokens から発行できます。
+          </p>
+        </section>
+
         {/* GitHub PAT */}
         <section>
           <h2 className="text-sm font-semibold text-gray-300 mb-2">GitHub Personal Access Token</h2>
