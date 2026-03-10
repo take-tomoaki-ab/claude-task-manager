@@ -15,7 +15,7 @@ export class WrikeService {
   private extractTaskId(url: string): string | null {
     try {
       const parsed = new URL(url)
-      // https://www.wrike.com/open.htm?id=IEXXXXXXYA
+      // https://www.wrike.com/open.htm?id=IEXXXXXXYA (エンコードID) or numeric web ID
       const id = parsed.searchParams.get('id')
       if (id) return id
     } catch {
@@ -24,38 +24,97 @@ export class WrikeService {
     return null
   }
 
+  // Wrike API は numeric web ID を直接受け付けないため、permalink パラメータで解決する
+  private async resolveTaskId(
+    rawId: string,
+    permalinkUrl: string,
+    token: string
+  ): Promise<string> {
+    // numeric ID かどうか確認（エンコードIDは英数字混在で数字のみではない）
+    if (/^\d+$/.test(rawId)) {
+      // permalink URL でタスクを検索する
+      const params = new URLSearchParams({
+        fields: '["customItemTypeId"]',
+        permalink: permalinkUrl
+      })
+      const res = await this.fetchWithAuth(
+        `https://www.wrike.com/api/v4/tasks?${params}`,
+        token
+      )
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(`Wrike API エラー ${res.status}: ${body}`)
+      }
+      const data = (await res.json()) as {
+        data: Array<{ id: string; title: string; customItemTypeId?: string }>
+      }
+      if (!data.data || data.data.length === 0) {
+        throw new Error('タスクが見つかりませんでした（permalink検索）')
+      }
+      return data.data[0].id
+    }
+    // エンコードID はそのまま使用
+    return rawId
+  }
+
   async fetchTicket(url: string, token: string): Promise<WrikeTicketInfo> {
-    const taskId = this.extractTaskId(url)
-    if (!taskId) throw new Error('WrikeのURLからタスクIDを取得できませんでした')
+    const rawId = this.extractTaskId(url)
+    if (!rawId) throw new Error('WrikeのURLからタスクIDを取得できませんでした')
 
-    // customItemTypeId を取得するために fields に指定
-    const taskRes = await this.fetchWithAuth(
-      `https://www.wrike.com/api/v4/tasks/${taskId}?fields=["customItemTypeId"]`,
-      token
-    )
-    if (!taskRes.ok) {
-      const body = await taskRes.text()
-      throw new Error(`Wrike API エラー ${taskRes.status}: ${body}`)
+    // numeric web ID の場合は permalink 検索でエンコード ID に変換
+    let taskId = rawId
+    let taskTitle = ''
+    let customItemTypeId: string | undefined
+
+    if (/^\d+$/.test(rawId)) {
+      const params = new URLSearchParams({
+        fields: '["customItemTypeId"]',
+        permalink: url
+      })
+      const res = await this.fetchWithAuth(
+        `https://www.wrike.com/api/v4/tasks?${params}`,
+        token
+      )
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(`Wrike API エラー ${res.status}: ${body}`)
+      }
+      const data = (await res.json()) as {
+        data: Array<{ id: string; title: string; customItemTypeId?: string }>
+      }
+      if (!data.data || data.data.length === 0) {
+        throw new Error('タスクが見つかりませんでした')
+      }
+      taskId = data.data[0].id
+      taskTitle = data.data[0].title
+      customItemTypeId = data.data[0].customItemTypeId
+    } else {
+      // エンコードID の場合は直接取得
+      const params = new URLSearchParams({ fields: '["customItemTypeId"]' })
+      const res = await this.fetchWithAuth(
+        `https://www.wrike.com/api/v4/tasks/${taskId}?${params}`,
+        token
+      )
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(`Wrike API エラー ${res.status}: ${body}`)
+      }
+      const data = (await res.json()) as {
+        data: Array<{ id: string; title: string; customItemTypeId?: string }>
+      }
+      if (!data.data || data.data.length === 0) {
+        throw new Error('タスクが見つかりませんでした')
+      }
+      taskId = data.data[0].id
+      taskTitle = data.data[0].title
+      customItemTypeId = data.data[0].customItemTypeId
     }
 
-    const taskData = (await taskRes.json()) as {
-      data: Array<{
-        id: string
-        title: string
-        customItemTypeId?: string
-      }>
-    }
-
-    if (!taskData.data || taskData.data.length === 0) {
-      throw new Error('タスクが見つかりませんでした')
-    }
-
-    const task = taskData.data[0]
     let taskType: 'feat' | 'bugfix' | null = null
 
-    if (task.customItemTypeId) {
+    if (customItemTypeId) {
       const citRes = await this.fetchWithAuth(
-        `https://www.wrike.com/api/v4/customitemtypes/${task.customItemTypeId}`,
+        `https://www.wrike.com/api/v4/customitemtypes/${customItemTypeId}`,
         token
       )
       if (citRes.ok) {
@@ -68,6 +127,6 @@ export class WrikeService {
       }
     }
 
-    return { id: task.id, title: task.title, taskType, url }
+    return { id: taskId, title: taskTitle, taskType, url }
   }
 }
