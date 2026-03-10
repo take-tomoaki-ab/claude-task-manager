@@ -28,8 +28,9 @@ export class WrikeService {
     const taskId = this.extractTaskId(url)
     if (!taskId) throw new Error('WrikeのURLからタスクIDを取得できませんでした')
 
+    // customItemTypeId を取得するために fields に指定
     const taskRes = await this.fetchWithAuth(
-      `https://www.wrike.com/api/v4/tasks/${taskId}?fields=["customFields"]`,
+      `https://www.wrike.com/api/v4/tasks/${taskId}?fields=["customItemTypeId"]`,
       token
     )
     if (!taskRes.ok) {
@@ -41,7 +42,7 @@ export class WrikeService {
       data: Array<{
         id: string
         title: string
-        customFields?: Array<{ id: string; value: string }>
+        customItemTypeId?: string
       }>
     }
 
@@ -52,25 +53,18 @@ export class WrikeService {
     const task = taskData.data[0]
     let taskType: 'feat' | 'bugfix' | null = null
 
-    if (task.customFields && task.customFields.length > 0) {
-      const fieldIds = task.customFields.map((f) => f.id).join(',')
-      const cfRes = await this.fetchWithAuth(
-        `https://www.wrike.com/api/v4/customfields/${fieldIds}`,
+    if (task.customItemTypeId) {
+      const citRes = await this.fetchWithAuth(
+        `https://www.wrike.com/api/v4/customitemtypes/${task.customItemTypeId}`,
         token
       )
-      if (cfRes.ok) {
-        const cfData = (await cfRes.json()) as {
-          data: Array<{ id: string; title: string }>
+      if (citRes.ok) {
+        const citData = (await citRes.json()) as {
+          data: Array<{ id: string; name: string }>
         }
-        // "チケットタイプ" を含むフィールドを探す
-        const ticketTypeField = cfData.data.find((f) =>
-          f.title.includes('チケットタイプ') || f.title.toLowerCase().includes('ticket_type')
-        )
-        if (ticketTypeField) {
-          const fieldValue = task.customFields.find((cf) => cf.id === ticketTypeField.id)?.value
-          if (fieldValue === '実装チケット') taskType = 'feat'
-          else if (fieldValue === 'QA指摘') taskType = 'bugfix'
-        }
+        const typeName = citData.data[0]?.name ?? ''
+        if (typeName === '実装チケット') taskType = 'feat'
+        else if (typeName === 'QA指摘') taskType = 'bugfix'
       }
     }
 
