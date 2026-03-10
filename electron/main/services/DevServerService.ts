@@ -40,7 +40,8 @@ export class DevServerService {
     const cmdString = [serverConfig.command, ...serverConfig.args].join(' ')
     const env = {
       ...process.env,
-      PATH: `/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH || ''}`
+      PATH: `/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH || ''}`,
+      NODE_ENV: 'development'
     }
 
     const child = spawn(userShell, ['-c', cmdString], {
