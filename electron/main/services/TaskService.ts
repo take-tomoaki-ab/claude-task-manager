@@ -171,7 +171,7 @@ export class TaskService {
     this.db
       .prepare(
         `INSERT INTO tasks (id, type, status, title, pane, data, created_at)
-         VALUES (?, ?, 'will_do', ?, ?, ?, ?)`
+         VALUES (?, ?, 'done', ?, ?, ?, ?)`
       )
       .run(
         task.id,
@@ -189,7 +189,11 @@ export class TaskService {
         ),
         task.created_at
       )
-    this.db.prepare(`INSERT INTO task_runtime (task_id) VALUES (?)`).run(task.id)
+    this.db
+      .prepare(
+        `INSERT INTO task_runtime (task_id, started_at, completed_at) VALUES (?, ?, ?)`
+      )
+      .run(task.id, task.startedAt ?? null, task.completedAt ?? null)
     this.db.prepare(`DELETE FROM task_archive WHERE id = ?`).run(id)
 
     return this.getById(task.id)!
