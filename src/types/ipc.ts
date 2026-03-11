@@ -24,6 +24,19 @@ export type AppSettings = {
   promptTemplates?: Record<string, string>  // タスクタイプ別プロンプトテンプレート
   backgroundImageDir?: string  // 背景画像ディレクトリ
   backgroundIntervalSec?: number  // スライドショー間隔（秒）
+  notificationsEnabled?: boolean  // デスクトップ通知を有効にするか（デフォルト: true）
+  wrikeAccessToken?: string  // Wrike APIアクセストークン（safeStorageで暗号化）
+  wrikeItemTypeFeatId?: string   // "実装チケット" の customItemTypeId
+  wrikeItemTypeBugfixId?: string // "QA指摘" の customItemTypeId
+}
+
+// Wrikeチケット情報
+export type WrikeTicketInfo = {
+  id: string
+  title: string
+  taskType: 'feat' | 'bugfix' | null
+  customItemTypeId?: string  // マッピング未設定時に設定画面で確認できるよう返す
+  url: string
 }
 
 // Git status
@@ -105,6 +118,9 @@ export type IpcChannels = {
 
   // GitHub
   'github:sync-prs': [void, { created: number; total: number }]
+
+  // Wrike
+  'wrike:fetch-ticket': [string, WrikeTicketInfo]
 }
 
 // window.api の型定義（preload で expose するもの）
@@ -120,6 +136,7 @@ export type WindowApi = {
     archiveAllDone: () => Promise<number>
     deleteAllArchived: () => Promise<number>
     restoreArchived: (id: string) => Promise<RuntimeTask>
+    onUpdated: (callback: () => void) => () => void
   }
   terminal: {
     start: (taskId: string, workdir: string) => Promise<void>
@@ -159,5 +176,8 @@ export type WindowApi = {
   }
   github: {
     syncPRs: () => Promise<{ created: number; total: number }>
+  }
+  wrike: {
+    fetchTicket: (url: string) => Promise<WrikeTicketInfo>
   }
 }

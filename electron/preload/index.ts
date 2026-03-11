@@ -25,7 +25,12 @@ const api = {
     deleteAllArchived: (): Promise<number> =>
       ipcRenderer.invoke('tasks:delete-all-archived'),
     restoreArchived: (id: string): Promise<RuntimeTask> =>
-      ipcRenderer.invoke('tasks:restore-archived', id)
+      ipcRenderer.invoke('tasks:restore-archived', id),
+    onUpdated: (callback: () => void): (() => void) => {
+      const listener = (): void => callback()
+      ipcRenderer.on('tasks:updated', listener)
+      return () => ipcRenderer.removeListener('tasks:updated', listener)
+    }
   },
 
   terminal: {
@@ -102,6 +107,10 @@ const api = {
   github: {
     syncPRs: (): Promise<{ created: number; total: number }> =>
       ipcRenderer.invoke('github:sync-prs')
+  },
+
+  wrike: {
+    fetchTicket: (url: string) => ipcRenderer.invoke('wrike:fetch-ticket', url)
   }
 }
 

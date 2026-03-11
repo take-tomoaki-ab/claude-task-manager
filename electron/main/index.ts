@@ -9,12 +9,14 @@ import { GitService } from './services/GitService'
 import { ClaudeService } from './services/ClaudeService'
 import { DevServerService } from './services/DevServerService'
 import { GitHubService } from './services/GitHubService'
+import { WrikeService } from './services/WrikeService'
 import { registerTaskHandlers } from './ipc/tasks'
 import { registerTerminalHandlers } from './ipc/terminal'
 import { registerGitHandlers } from './ipc/git'
 import { registerClaudeHandlers } from './ipc/claude'
 import { registerDevServerHandlers } from './ipc/devServer'
 import { registerGitHubHandlers, syncReviewPRs } from './ipc/github'
+import { registerWrikeHandlers } from './ipc/wrike'
 import type { AppSettings } from '../../src/types/ipc'
 
 // bg:// カスタムプロトコルをセキュアとして登録（app.whenReady より前に必要）
@@ -48,6 +50,16 @@ function getSettings(): AppSettings {
     try {
       const encrypted = Buffer.from(settings.githubPat, 'base64')
       settings.githubPat = safeStorage.decryptString(encrypted)
+    } catch {
+      // Decryption failed, return as-is
+    }
+  }
+
+  // Decrypt Wrike access token if exists
+  if (settings.wrikeAccessToken && safeStorage.isEncryptionAvailable()) {
+    try {
+      const encrypted = Buffer.from(settings.wrikeAccessToken, 'base64')
+      settings.wrikeAccessToken = safeStorage.decryptString(encrypted)
     } catch {
       // Decryption failed, return as-is
     }
@@ -102,13 +114,14 @@ app.whenReady().then(() => {
   const terminalService = new TerminalService()
   terminalServiceInstance = terminalService
   const gitService = new GitService()
-  const claudeService = new ClaudeService(terminalService)
+  const claudeService = new ClaudeService(terminalService, getSettings)
   const devServerService = new DevServerService()
   devServerServiceInstance = devServerService
   const gitHubService = new GitHubService()
+  const wrikeService = new WrikeService()
 
   // Register IPC handlers
-  registerTaskHandlers(taskService)
+  registerTaskHandlers(taskService, getSettings)
   registerTerminalHandlers(terminalService, getWindow)
   registerGitHandlers(gitService)
   registerClaudeHandlers(
@@ -120,7 +133,8 @@ app.whenReady().then(() => {
     getSettings
   )
   registerDevServerHandlers(devServerService, getWindow, getSettings)
-  registerGitHubHandlers(gitHubService, taskService, getSettings)
+  registerGitHubHandlers(gitHubService, taskService, getSettings, getWindow)
+  registerWrikeHandlers(wrikeService, getSettings)
 
   // PR自動同期タイマー（1分ごとにチェックし、設定された間隔で同期を実行）
   let lastPrSyncAt = 0
@@ -131,7 +145,7 @@ app.whenReady().then(() => {
     if (now - lastPrSyncAt >= intervalMs) {
       lastPrSyncAt = now
       try {
-        await syncReviewPRs(gitHubService, taskService, getSettings)
+        await syncReviewPRs(gitHubService, taskService, getSettings, getWindow)
       } catch (err) {
         console.error('[github:sync-prs] auto-sync error:', err)
       }
@@ -152,6 +166,13 @@ app.whenReady().then(() => {
       if (merged.githubPat && safeStorage.isEncryptionAvailable()) {
         merged.githubPat = safeStorage
           .encryptString(merged.githubPat)
+          .toString('base64')
+      }
+
+      // Encrypt Wrike access token
+      if (merged.wrikeAccessToken && safeStorage.isEncryptionAvailable()) {
+        merged.wrikeAccessToken = safeStorage
+          .encryptString(merged.wrikeAccessToken)
           .toString('base64')
       }
 
@@ -198,7 +219,8 @@ app.whenReady().then(() => {
     })
     if (result.canceled || !result.filePath) return false
     const settings = getSettings()
-    writeFileSync(result.filePath, JSON.stringify(settings, null, 2), 'utf-8')
+    const { githubPat: _omit, ...exportSettings } = settings
+    writeFileSync(result.filePath, JSON.stringify(exportSettings, null, 2), 'utf-8')
     return true
   })
 
@@ -216,6 +238,9 @@ app.whenReady().then(() => {
     const merged = { ...current, ...imported }
     if (merged.githubPat && safeStorage.isEncryptionAvailable()) {
       merged.githubPat = safeStorage.encryptString(merged.githubPat).toString('base64')
+    }
+    if (merged.wrikeAccessToken && safeStorage.isEncryptionAvailable()) {
+      merged.wrikeAccessToken = safeStorage.encryptString(merged.wrikeAccessToken).toString('base64')
     }
     db.prepare(`INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)`).run('settings', JSON.stringify(merged))
     return getSettings()

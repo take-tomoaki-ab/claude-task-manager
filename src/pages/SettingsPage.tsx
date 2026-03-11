@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { AppSettings, PaneConfig, DevServerConfig } from '../types/ipc'
 import ConfirmDialog from '../components/Common/ConfirmDialog'
+import Toast from '../components/Common/Toast'
 
 // args配列 ↔ テキスト変換をonBlurで行うinput
 function ArgsInput({
@@ -34,6 +35,59 @@ function ArgsInput({
   )
 }
 
+// Wrikeチケットの customItemTypeId を確認するヘルパー
+function WrikeIdChecker({ token, inputClass }: { token?: string; inputClass: string }) {
+  const [url, setUrl] = useState('')
+  const [result, setResult] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
+
+  const handleCheck = async () => {
+    if (!url.trim() || !token) return
+    setChecking(true)
+    setResult(null)
+    try {
+      const info = await window.api.wrike.fetchTicket(url.trim())
+      if (info.customItemTypeId) {
+        setResult(`customItemTypeId: ${info.customItemTypeId}`)
+      } else {
+        setResult('このチケットにはカスタム項目タイプが設定されていません')
+      }
+    } catch (e) {
+      setResult(`エラー: ${(e as Error).message}`)
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  return (
+    <div className="bg-gray-750 border border-gray-700 rounded p-3">
+      <p className="text-xs text-gray-400 mb-2">チケットURLからカスタム項目タイプIDを確認</p>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={url}
+          onChange={(e) => { setUrl(e.target.value); setResult(null) }}
+          placeholder="https://www.wrike.com/open.htm?id=..."
+          className={`${inputClass} flex-1 text-xs`}
+        />
+        <button
+          type="button"
+          onClick={handleCheck}
+          disabled={checking || !url.trim() || !token}
+          className="px-3 py-1.5 rounded text-xs bg-gray-600 hover:bg-gray-500 text-white whitespace-nowrap disabled:opacity-40"
+        >
+          {checking ? '確認中...' : 'ID確認'}
+        </button>
+      </div>
+      {result && (
+        <p className={`text-xs mt-1.5 font-mono ${result.startsWith('エラー') ? 'text-red-400' : 'text-green-400'}`}>
+          {result}
+        </p>
+      )}
+    </div>
+  )
+}
+
 const TASK_TYPES = ['feat', 'design', 'review', 'bugfix', 'research', 'chore'] as const
 
 type DeleteTarget =
@@ -44,6 +98,7 @@ export default function SettingsPage() {
   const navigate = useNavigate()
   const [settings, setSettings] = useState<AppSettings>({ panes: [], promptTemplates: {} })
   const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [prSyncing, setPrSyncing] = useState(false)
   const [prSyncResult, setPrSyncResult] = useState<{ created: number; total: number } | null>(null)
@@ -119,8 +174,14 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setSaving(true)
-    await window.api.settings.set(settings)
-    setSaving(false)
+    try {
+      await window.api.settings.set(settings)
+      setToast({ message: '設定を保存しました', type: 'success' })
+    } catch {
+      setToast({ message: '保存に失敗しました', type: 'error' })
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSyncPRs = useCallback(async () => {
@@ -242,6 +303,21 @@ export default function SettingsPage() {
           ))}
         </section>
 
+        {/* 通知設定 */}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-300 mb-2">通知</h2>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={settings.notificationsEnabled ?? true}
+              onChange={(e) => setSettings((prev) => ({ ...prev, notificationsEnabled: e.target.checked }))}
+              className="w-4 h-4 rounded"
+            />
+            <span className="text-sm text-gray-300">デスクトップ通知を有効にする</span>
+          </label>
+          <p className="text-xs text-gray-500 mt-1 ml-7">タスク完了・コンテキスト警告・PR同期の通知を表示します</p>
+        </section>
+
         {/* Claude 起動オプション */}
         <section>
           <h2 className="text-sm font-semibold text-gray-300 mb-2">Claude Code 起動オプション</h2>
@@ -302,6 +378,45 @@ export default function SettingsPage() {
                 </div>
               )
             })}
+          </div>
+        </section>
+
+        {/* Wrike 設定 */}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-300 mb-3">Wrike 連携</h2>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">アクセストークン</label>
+              <input
+                type="password"
+                value={settings.wrikeAccessToken ?? ''}
+                onChange={(e) => setSettings((prev) => ({ ...prev, wrikeAccessToken: e.target.value }))}
+                placeholder="Wrike personal access token"
+                className={`${inputClass} w-full max-w-md`}
+              />
+              <p className="text-xs text-gray-500 mt-1">Wrike設定 &gt; API &gt; Personal access tokens から発行（暗号化保存）</p>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">カスタム項目タイプID（feat）</label>
+              <input
+                type="text"
+                value={settings.wrikeItemTypeFeatId ?? ''}
+                onChange={(e) => setSettings((prev) => ({ ...prev, wrikeItemTypeFeatId: e.target.value }))}
+                placeholder="実装チケット の customItemTypeId"
+                className={`${inputClass} w-full max-w-md`}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">カスタム項目タイプID（bugfix）</label>
+              <input
+                type="text"
+                value={settings.wrikeItemTypeBugfixId ?? ''}
+                onChange={(e) => setSettings((prev) => ({ ...prev, wrikeItemTypeBugfixId: e.target.value }))}
+                placeholder="QA指摘 の customItemTypeId"
+                className={`${inputClass} w-full max-w-md`}
+              />
+            </div>
+            <WrikeIdChecker token={settings.wrikeAccessToken} inputClass={inputClass} />
           </div>
         </section>
 
@@ -435,25 +550,29 @@ export default function SettingsPage() {
                 if (imported) {
                   setSettings(imported)
                   setImportResult('ok')
+                  setToast({ message: 'インポート完了！設定を反映しました', type: 'success' })
                 } else {
                   setImportResult('cancelled')
                 }
               } catch {
                 setImportResult('error')
+                setToast({ message: 'インポートに失敗しました', type: 'error' })
               }
             }}
             className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 text-white text-sm"
           >
             インポート
           </button>
-          {importResult === 'ok' && (
-            <span className="text-xs text-green-400">インポート完了！設定を反映しました</span>
-          )}
-          {importResult === 'error' && (
-            <span className="text-xs text-red-400">インポートに失敗しました</span>
-          )}
         </div>
       </div>
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
       <ConfirmDialog
         isOpen={deleteTarget !== null}

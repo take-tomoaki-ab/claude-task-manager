@@ -1,8 +1,12 @@
 import { ipcMain, Notification } from 'electron'
 import type { TaskService } from '../services/TaskService'
+import type { AppSettings } from '../../../src/types/ipc'
 import type { Task, RuntimeTaskState } from '../../../src/types/task'
 
-export function registerTaskHandlers(taskService: TaskService): void {
+export function registerTaskHandlers(
+  taskService: TaskService,
+  getSettings: () => Pick<AppSettings, 'notificationsEnabled'>
+): void {
   ipcMain.handle('tasks:list', async () => {
     try {
       return taskService.list()
@@ -34,10 +38,13 @@ export function registerTaskHandlers(taskService: TaskService): void {
           existing.status === 'doing' &&
           data.status === 'done'
         ) {
-          new Notification({
-            title: '完了',
-            body: `タスク "${result.title}" が完了しました`
-          }).show()
+          const { notificationsEnabled = true } = getSettings()
+          if (notificationsEnabled) {
+            new Notification({
+              title: '完了',
+              body: `タスク "${result.title}" が完了しました`
+            }).show()
+          }
         }
 
         return result

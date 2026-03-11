@@ -21,6 +21,43 @@ const TYPE_COLORS: Record<string, string> = {
   chore: 'bg-gray-600'
 }
 
+function DoneDetail({ task }: { task: RuntimeTask }) {
+  const [open, setOpen] = useState(false)
+
+  const rows: { label: string; value: string }[] = []
+  if ('branch' in task && task.branch) rows.push({ label: 'ブランチ', value: task.branch })
+  if ('baseBranch' in task && task.baseBranch) rows.push({ label: '分岐元', value: task.baseBranch })
+  if ('ticket' in task && task.ticket) rows.push({ label: 'Wrike', value: task.ticket })
+  if ('url' in task && task.url) rows.push({ label: 'PR URL', value: task.url })
+  if ('output' in task && task.output) rows.push({ label: '出力先', value: task.output })
+  if ('directory' in task && task.directory) rows.push({ label: 'Dir', value: task.directory })
+  if (task.prompt) rows.push({ label: 'プロンプト', value: task.prompt })
+
+  if (rows.length === 0) return null
+
+  return (
+    <div className="mb-2">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="text-xs text-gray-400 hover:text-gray-200 flex items-center gap-1"
+      >
+        <span>{open ? '▾' : '▸'}</span>
+        詳細
+      </button>
+      {open && (
+        <div className="mt-1 space-y-1 text-xs bg-gray-900/60 rounded p-2">
+          {rows.map(({ label, value }) => (
+            <div key={label} className="flex gap-2">
+              <span className="text-gray-500 shrink-0 w-16">{label}</span>
+              <span className="text-gray-300 break-all">{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
   const tasks = useTaskStore((s) => s.tasks)
   const startTask = useTaskStore((s) => s.startTask)
@@ -226,7 +263,27 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                 完了: {new Date(task.completedAt).toLocaleString('ja-JP')}
               </p>
             )}
-            <div className="flex items-center gap-2">
+            <DoneDetail task={task} />
+            <div className="flex items-center gap-2 mt-2">
+              {task.type === 'review' && 'url' in task && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openLink(task.url)}
+                    className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  >
+                    PR
+                  </button>
+                  <PRStatusBadge url={task.url} />
+                </div>
+              )}
+              {(task.type === 'feat' || task.type === 'bugfix') && 'ticket' in task && task.ticket && (
+                <button
+                  onClick={() => openLink(task.ticket)}
+                  className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
+                >
+                  Wrike
+                </button>
+              )}
               <button
                 onClick={handleArchive}
                 className="px-3 py-1 rounded text-xs bg-gray-600 hover:bg-gray-500 text-gray-300"

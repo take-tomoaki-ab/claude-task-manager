@@ -30,6 +30,12 @@ export default function DashboardPage() {
     window.api.settings.get().then((s) => setPanes(s.panes))
   }, [fetchTasks])
 
+  useEffect(() => {
+    return window.api.tasks.onUpdated(() => {
+      fetchTasks()
+    })
+  }, [fetchTasks])
+
   // 実行中タスクが占有しているペインを除いた空きペインの有無
   const occupiedPaneIds = new Set(
     tasks.filter((t) => t.status === 'doing' && t.pane).map((t) => t.pane)

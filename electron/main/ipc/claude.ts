@@ -74,8 +74,9 @@ export function registerClaudeHandlers(
           // Start Claude
           const rawPrompt = prompt || task.prompt || settings.promptTemplates?.[task.type]
           const taskPrompt = rawPrompt ? interpolateTemplate(rawPrompt, task) : undefined
-          const dangerously = settings.useDangerouslySkipPermissions ?? false
-          claudeService.start(taskId, resolvedWorkdir, taskPrompt, dangerously)
+          const planMode = task.type === 'research'
+          const dangerously = !planMode && (settings.useDangerouslySkipPermissions ?? false)
+          claudeService.start(taskId, resolvedWorkdir, taskPrompt, dangerously, planMode)
 
           // Record PID
           const pid = terminalService.getPid(taskId)
