@@ -38,6 +38,11 @@ export default function ArchivePage() {
     await fetchArchives()
   }
 
+  const handleRestore = async (id: string) => {
+    await window.api.tasks.restoreArchived(id)
+    await fetchArchives()
+  }
+
   const handleDeleteAll = async () => {
     await window.api.tasks.deleteAllArchived()
     setDeleteAllConfirm(false)
@@ -98,6 +103,15 @@ export default function ArchivePage() {
                 <span className="text-xs text-gray-500">
                   {new Date(entry.archived_at).toLocaleString('ja-JP')}
                 </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleRestore(entry.id)
+                  }}
+                  className="px-2 py-1 rounded text-xs bg-yellow-700 hover:bg-yellow-600 text-white"
+                >
+                  戻す
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()

@@ -23,7 +23,9 @@ const api = {
     archiveAllDone: (): Promise<number> =>
       ipcRenderer.invoke('tasks:archive-all-done'),
     deleteAllArchived: (): Promise<number> =>
-      ipcRenderer.invoke('tasks:delete-all-archived')
+      ipcRenderer.invoke('tasks:delete-all-archived'),
+    restoreArchived: (id: string): Promise<RuntimeTask> =>
+      ipcRenderer.invoke('tasks:restore-archived', id)
   },
 
   terminal: {

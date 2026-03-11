@@ -160,6 +160,41 @@ export class TaskService {
     this.db.prepare(`DELETE FROM task_archive WHERE id = ?`).run(id)
   }
 
+  restoreFromArchive(id: string): RuntimeTask {
+    const row = this.db
+      .prepare(`SELECT task_data FROM task_archive WHERE id = ?`)
+      .get(id) as { task_data: string } | undefined
+    if (!row) throw new Error(`Archive not found: ${id}`)
+
+    const task: RuntimeTask = JSON.parse(row.task_data)
+
+    this.db
+      .prepare(
+        `INSERT INTO tasks (id, type, status, title, pane, data, created_at)
+         VALUES (?, ?, 'will_do', ?, ?, ?, ?)`
+      )
+      .run(
+        task.id,
+        task.type,
+        task.title,
+        task.pane ?? null,
+        JSON.stringify(
+          Object.fromEntries(
+            Object.entries(task).filter(
+              ([k]) => !['id', 'type', 'status', 'title', 'pane', 'created_at',
+                         'pid', 'workdir', 'contextUsed', 'contextLimit',
+                         'startedAt', 'completedAt', 'isArchived'].includes(k)
+            )
+          )
+        ),
+        task.created_at
+      )
+    this.db.prepare(`INSERT INTO task_runtime (task_id) VALUES (?)`).run(task.id)
+    this.db.prepare(`DELETE FROM task_archive WHERE id = ?`).run(id)
+
+    return this.getById(task.id)!
+  }
+
   archiveAllDone(): number {
     const doneTasks = this.list().filter((t) => t.status === 'done')
     for (const task of doneTasks) {
