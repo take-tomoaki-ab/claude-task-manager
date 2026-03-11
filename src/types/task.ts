@@ -61,7 +61,7 @@ export type RuntimeTaskState = {
   contextUsed?: number
   contextLimit?: number
   startedAt?: string
-  completedAt?: string
+  completedAt?: string | null
   isArchived?: boolean
 }
 

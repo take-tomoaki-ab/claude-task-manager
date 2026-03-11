@@ -57,6 +57,10 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
     await archiveTask(task.id)
   }
 
+  const handleRevert = async () => {
+    await updateTask(task.id, { status: 'will_do', completedAt: null })
+  }
+
   const openLink = (url: string) => {
     window.api.shell.openExternal(url)
   }
@@ -222,12 +226,20 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                 完了: {new Date(task.completedAt).toLocaleString('ja-JP')}
               </p>
             )}
-            <button
-              onClick={handleArchive}
-              className="px-3 py-1 rounded text-xs bg-gray-600 hover:bg-gray-500 text-gray-300"
-            >
-              アーカイブ
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleArchive}
+                className="px-3 py-1 rounded text-xs bg-gray-600 hover:bg-gray-500 text-gray-300"
+              >
+                アーカイブ
+              </button>
+              <button
+                onClick={handleRevert}
+                className="px-3 py-1 rounded text-xs bg-yellow-700 hover:bg-yellow-600 text-white"
+              >
+                戻す
+              </button>
+            </div>
           </div>
         )}
       </div>
