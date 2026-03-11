@@ -18,9 +18,12 @@ export class ClaudeService {
     this.getSettings = getSettings
   }
 
-  start(taskId: string, workdir: string, prompt?: string, dangerously?: boolean): void {
+  start(taskId: string, workdir: string, prompt?: string, dangerously?: boolean, planMode?: boolean): void {
     this.terminalService.start(taskId, workdir)
-    const claudeCmd = dangerously ? 'claude --dangerously-skip-permissions\n' : 'claude\n'
+    let claudeArgs = ''
+    if (dangerously) claudeArgs += ' --dangerously-skip-permissions'
+    if (planMode) claudeArgs += ' --permission-mode plan'
+    const claudeCmd = `claude${claudeArgs}\n`
     this.terminalService.write(taskId, claudeCmd)
 
     if (prompt) {
