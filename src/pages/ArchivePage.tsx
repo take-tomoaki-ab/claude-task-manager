@@ -110,7 +110,7 @@ export default function ArchivePage() {
                   }}
                   className="px-2 py-1 rounded text-xs bg-yellow-700 hover:bg-yellow-600 text-white"
                 >
-                  戻す
+                  完了に戻す
                 </button>
                 <button
                   onClick={(e) => {

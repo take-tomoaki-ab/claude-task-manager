@@ -237,7 +237,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                 onClick={handleRevert}
                 className="px-3 py-1 rounded text-xs bg-yellow-700 hover:bg-yellow-600 text-white"
               >
-                戻す
+                未実行に戻す
               </button>
             </div>
           </div>
