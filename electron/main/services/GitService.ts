@@ -52,8 +52,13 @@ export class GitService {
       // ローカルに存在 → そのまま切り替え
       await git.checkout(branch)
     } else if (baseBranch) {
-      // baseBranch から新規作成
-      await git.checkoutBranch(branch, baseBranch)
+      // origin/<baseBranch> が存在すればそちらを優先、なければローカルから
+      const allBranches = await git.branch(['-a'])
+      const remoteBase = `remotes/origin/${baseBranch}`
+      const startPoint = allBranches.all.includes(remoteBase)
+        ? `origin/${baseBranch}`
+        : baseBranch
+      await git.checkoutBranch(branch, startPoint)
     } else {
       // 現在のHEADから新規作成
       await git.checkoutLocalBranch(branch)
