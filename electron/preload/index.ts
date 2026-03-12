@@ -24,6 +24,8 @@ const api = {
       ipcRenderer.invoke('tasks:archive-all-done'),
     deleteAllArchived: (): Promise<number> =>
       ipcRenderer.invoke('tasks:delete-all-archived'),
+    restoreArchived: (id: string): Promise<RuntimeTask> =>
+      ipcRenderer.invoke('tasks:restore-archived', id),
     onUpdated: (callback: () => void): (() => void) => {
       const listener = (): void => callback()
       ipcRenderer.on('tasks:updated', listener)

@@ -101,4 +101,12 @@ export function registerTaskHandlers(
       throw new Error(`Failed to delete all archived tasks: ${(error as Error).message}`)
     }
   })
+
+  ipcMain.handle('tasks:restore-archived', async (_, id: string) => {
+    try {
+      return taskService.restoreFromArchive(id)
+    } catch (error) {
+      throw new Error(`Failed to restore archived task: ${(error as Error).message}`)
+    }
+  })
 }
