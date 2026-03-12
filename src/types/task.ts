@@ -60,8 +60,8 @@ export type RuntimeTaskState = {
   workdir?: string
   contextUsed?: number
   contextLimit?: number
-  startedAt?: string
-  completedAt?: string
+  startedAt?: string | null
+  completedAt?: string | null
   isArchived?: boolean
 }
 

@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ArchiveEntry } from '../types/task'
 import ConfirmDialog from '../components/Common/ConfirmDialog'
+import { useTaskStore } from '../stores/taskStore'
 
 export default function ArchivePage() {
   const navigate = useNavigate()
+  const restoreArchived = useTaskStore((s) => s.restoreArchived)
   const [entries, setEntries] = useState<ArchiveEntry[]>([])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -35,6 +37,11 @@ export default function ArchivePage() {
     if (!deleteTarget) return
     await window.api.tasks.deleteArchived(deleteTarget)
     setDeleteTarget(null)
+    await fetchArchives()
+  }
+
+  const handleRestore = async (id: string) => {
+    await restoreArchived(id)
     await fetchArchives()
   }
 
@@ -98,6 +105,15 @@ export default function ArchivePage() {
                 <span className="text-xs text-gray-500">
                   {new Date(entry.archived_at).toLocaleString('ja-JP')}
                 </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleRestore(entry.id)
+                  }}
+                  className="px-2 py-1 rounded text-xs bg-yellow-700 hover:bg-yellow-600 text-white"
+                >
+                  完了に戻す
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
