@@ -167,36 +167,27 @@ export class TaskService {
     if (!row) throw new Error(`Archive not found: ${id}`)
 
     const task: RuntimeTask = JSON.parse(row.task_data)
+    const { id: taskId, type, status: _status, title, pane, created_at,
+            pid: _pid, workdir: _workdir, contextUsed: _cu, contextLimit: _cl,
+            startedAt, completedAt, isArchived: _ia, ...rest } = task
 
-    this.db
-      .prepare(
-        `INSERT INTO tasks (id, type, status, title, pane, data, created_at)
-         VALUES (?, ?, 'done', ?, ?, ?, ?)`
-      )
-      .run(
-        task.id,
-        task.type,
-        task.title,
-        task.pane ?? null,
-        JSON.stringify(
-          Object.fromEntries(
-            Object.entries(task).filter(
-              ([k]) => !['id', 'type', 'status', 'title', 'pane', 'created_at',
-                         'pid', 'workdir', 'contextUsed', 'contextLimit',
-                         'startedAt', 'completedAt', 'isArchived'].includes(k)
-            )
-          )
-        ),
-        task.created_at
-      )
-    this.db
-      .prepare(
-        `INSERT INTO task_runtime (task_id, started_at, completed_at) VALUES (?, ?, ?)`
-      )
-      .run(task.id, task.startedAt ?? null, task.completedAt ?? null)
-    this.db.prepare(`DELETE FROM task_archive WHERE id = ?`).run(id)
+    const restore = this.db.transaction(() => {
+      this.db
+        .prepare(
+          `INSERT INTO tasks (id, type, status, title, pane, data, created_at)
+           VALUES (?, ?, 'done', ?, ?, ?, ?)`
+        )
+        .run(taskId, type, title, pane ?? null, JSON.stringify(rest), created_at)
+      this.db
+        .prepare(
+          `INSERT INTO task_runtime (task_id, started_at, completed_at) VALUES (?, ?, ?)`
+        )
+        .run(taskId, startedAt ?? null, completedAt ?? null)
+      this.db.prepare(`DELETE FROM task_archive WHERE id = ?`).run(id)
+    })
 
-    return this.getById(task.id)!
+    restore()
+    return this.getById(taskId)!
   }
 
   archiveAllDone(): number {

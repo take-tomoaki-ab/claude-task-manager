@@ -95,7 +95,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
   }
 
   const handleRevert = async () => {
-    await updateTask(task.id, { status: 'will_do', completedAt: null })
+    await updateTask(task.id, { status: 'will_do', completedAt: null, startedAt: null })
   }
 
   const openLink = (url: string) => {

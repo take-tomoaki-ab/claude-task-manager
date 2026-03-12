@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ArchiveEntry } from '../types/task'
 import ConfirmDialog from '../components/Common/ConfirmDialog'
+import { useTaskStore } from '../stores/taskStore'
 
 export default function ArchivePage() {
   const navigate = useNavigate()
+  const restoreArchived = useTaskStore((s) => s.restoreArchived)
   const [entries, setEntries] = useState<ArchiveEntry[]>([])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -39,7 +41,7 @@ export default function ArchivePage() {
   }
 
   const handleRestore = async (id: string) => {
-    await window.api.tasks.restoreArchived(id)
+    await restoreArchived(id)
     await fetchArchives()
   }
 
