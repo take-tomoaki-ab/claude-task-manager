@@ -134,6 +134,17 @@ export default function PaneStatusSidebar() {
                           {ds.label}
                         </span>
                       </button>
+                      {running && status?.port && (
+                        <button
+                          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-blue-400 px-1 transition-opacity"
+                          onClick={() => window.api.shell.openExternal(`http://localhost:${status.port}`)}
+                          title={`http://localhost:${status.port} をブラウザで開く`}
+                        >
+                          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M6 2H2a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-4h-2v3H3V4h3V2zm4 0v2h2.586L7.293 9.293l1.414 1.414L14 5.414V8h2V2h-6z"/>
+                          </svg>
+                        </button>
+                      )}
                       <button
                         className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gray-200 px-1 transition-opacity"
                         onClick={() => openDevServerLog(pane.id, ds.label)}
