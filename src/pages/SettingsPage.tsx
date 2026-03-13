@@ -213,15 +213,7 @@ export default function SettingsPage() {
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Pane Settings */}
         <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-300">Pane マッピング</h2>
-            <button
-              onClick={addPane}
-              className="px-3 py-1 rounded text-xs bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              + Pane追加
-            </button>
-          </div>
+          <h2 className="text-sm font-semibold text-gray-300 mb-3">Pane マッピング</h2>
 
           {settings.panes.map((pane, pi) => (
             <div key={pi} className="bg-gray-800 rounded-lg p-4 mb-3">
@@ -250,15 +242,7 @@ export default function SettingsPage() {
 
               {/* Dev Servers */}
               <div className="pl-4 border-l-2 border-gray-700">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-400">Dev Servers</span>
-                  <button
-                    onClick={() => addDevServer(pi)}
-                    className="px-2 py-0.5 rounded text-xs bg-gray-600 hover:bg-gray-500 text-gray-300"
-                  >
-                    + 追加
-                  </button>
-                </div>
+                <span className="text-xs text-gray-400 block mb-2">Dev Servers</span>
                 {pane.devServers.map((ds, di) => (
                   <div key={di} className="flex items-center gap-2 mb-2">
                     <input
@@ -298,9 +282,22 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 ))}
+                <button
+                  onClick={() => addDevServer(pi)}
+                  className="mt-1 px-2 py-0.5 rounded text-xs bg-gray-600 hover:bg-gray-500 text-gray-300"
+                >
+                  + Dev Server追加
+                </button>
               </div>
             </div>
           ))}
+
+          <button
+            onClick={addPane}
+            className="px-3 py-1 rounded text-xs bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            + Pane追加
+          </button>
         </section>
 
         {/* 通知設定 */}
