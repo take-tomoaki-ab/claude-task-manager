@@ -27,7 +27,7 @@ function DoneDetail({ task }: { task: RuntimeTask }) {
   const rows: { label: string; value: string }[] = []
   if ('branch' in task && task.branch) rows.push({ label: 'ブランチ', value: task.branch })
   if ('baseBranch' in task && task.baseBranch) rows.push({ label: '分岐元', value: task.baseBranch })
-  if ('ticket' in task && task.ticket) rows.push({ label: 'Wrike', value: task.ticket })
+  if ('ticket' in task && task.ticket) rows.push({ label: 'チケット', value: task.ticket })
   if ('url' in task && task.url) rows.push({ label: 'PR URL', value: task.url })
   if ('output' in task && task.output) rows.push({ label: '出力先', value: task.output })
   if ('directory' in task && task.directory) rows.push({ label: 'Dir', value: task.directory })
@@ -168,7 +168,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                   onClick={() => openLink(task.ticket)}
                   className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                 >
-                  Wrike
+                  チケット
                 </button>
               )}
               {task.type === 'bugfix' && 'ticket' in task && task.ticket && (
@@ -176,7 +176,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                   onClick={() => openLink(task.ticket)}
                   className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                 >
-                  Wrike
+                  チケット
                 </button>
               )}
               {task.type === 'review' && 'url' in task && (
@@ -237,7 +237,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                   onClick={() => openLink(task.ticket)}
                   className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                 >
-                  Wrike
+                  チケット
                 </button>
               )}
               {task.type === 'review' && 'url' in task && (
@@ -281,7 +281,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                   onClick={() => openLink(task.ticket)}
                   className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                 >
-                  Wrike
+                  チケット
                 </button>
               )}
               <button

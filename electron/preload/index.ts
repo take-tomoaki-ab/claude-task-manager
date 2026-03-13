@@ -109,8 +109,9 @@ const api = {
       ipcRenderer.invoke('github:sync-prs')
   },
 
-  wrike: {
-    fetchTicket: (url: string) => ipcRenderer.invoke('wrike:fetch-ticket', url)
+  ticket: {
+    fetch: (url: string) => ipcRenderer.invoke('ticket:fetch', url),
+    providers: () => ipcRenderer.invoke('ticket:providers')
   }
 }
 

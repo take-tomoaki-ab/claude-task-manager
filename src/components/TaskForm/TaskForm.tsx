@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { TaskType, RuntimeTask } from '../../types/task'
 import type { RepoConfig } from '../../types/ipc'
+import type { TicketProviderMeta } from '../../types/plugin'
 import { useTaskStore } from '../../stores/taskStore'
 
 type Props = {
@@ -45,10 +46,11 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
   const [availableBranches, setAvailableBranches] = useState<string[]>([])
   const [branchSourceDir, setBranchSourceDir] = useState<string>('')
   const [branchLoadError, setBranchLoadError] = useState<string>('')
-  const [wrikeUrl, setWrikeUrl] = useState('')
-  const [wrikeFetching, setWrikeFetching] = useState(false)
-  const [wrikeError, setWrikeError] = useState('')
-  const [wrikeSuccess, setWrikeSuccess] = useState(false)
+  const [ticketUrl, setTicketUrl] = useState('')
+  const [ticketFetching, setTicketFetching] = useState(false)
+  const [ticketError, setTicketError] = useState('')
+  const [ticketSuccess, setTicketSuccess] = useState(false)
+  const [providers, setProviders] = useState<TicketProviderMeta[]>([])
   const tasks = useTaskStore((s) => s.tasks)
   const createTask = useTaskStore((s) => s.createTask)
   const updateTask = useTaskStore((s) => s.updateTask)
@@ -81,10 +83,9 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
     if (isOpen) {
       const initialForm = editTask ? taskToForm(editTask) : INITIAL_FORM
       setForm(initialForm)
-      setWrikeUrl('')
-      setWrikeError('')
-      setWrikeSuccess(false)
-      // フォームが開いたらリポジトリ一覧・ブランチ一覧を取得
+      setTicketUrl('')
+      setTicketError('')
+      setTicketSuccess(false)
       window.api.settings.get().then((settings) => {
         const allRepos = settings.repos ?? []
         setRepos(allRepos)
@@ -98,6 +99,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
         }
         loadBranches(repoId, allRepos)
       })
+      window.api.ticket.providers().then(setProviders).catch(() => setProviders([]))
     }
   }, [isOpen, editTask])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -107,24 +109,24 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  const handleWrikeFetch = async () => {
-    if (!wrikeUrl.trim()) return
-    setWrikeFetching(true)
-    setWrikeError('')
-    setWrikeSuccess(false)
+  const handleTicketFetch = async () => {
+    if (!ticketUrl.trim()) return
+    setTicketFetching(true)
+    setTicketError('')
+    setTicketSuccess(false)
     try {
-      const info = await window.api.wrike.fetchTicket(wrikeUrl.trim())
+      const info = await window.api.ticket.fetch(ticketUrl.trim())
       setForm((prev) => ({
         ...prev,
         type: info.taskType ?? prev.type,
         title: info.title,
-        ticket: wrikeUrl.trim(),
+        ticket: ticketUrl.trim(),
       }))
-      setWrikeSuccess(true)
+      setTicketSuccess(true)
     } catch (e) {
-      setWrikeError((e as Error).message)
+      setTicketError((e as Error).message)
     } finally {
-      setWrikeFetching(false)
+      setTicketFetching(false)
     }
   }
 
@@ -133,7 +135,6 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
     if (!form.title) return
 
     if (editTask) {
-      // 編集モード: タイトル・depends_on と型別フィールドを更新
       const common = {
         title: form.title,
         depends_on: form.depends_on || undefined,
@@ -147,7 +148,6 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
       }
       await updateTask(editTask.id, common)
     } else {
-      // 新規作成モード: pane は開始時に自動割り当てなので空文字で作成
       const base = {
         title: form.title,
         pane: '',
@@ -182,6 +182,8 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
   const labelClass = 'block text-xs text-gray-400 mb-1'
   const req = <span className="text-red-400 ml-1">*</span>
 
+  const configuredProviders = providers.filter((p) => p.configured)
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
       <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
@@ -189,30 +191,32 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
           <h2 className="text-lg font-semibold text-white mb-4">{editTask ? 'タスクを編集' : '新規タスク'}</h2>
 
           <div className="space-y-3">
-            {/* Wrike チケットから自動入力（新規作成時のみ） */}
-            {!editTask && (
+            {/* チケットから自動入力（新規作成時・設定済みプロバイダーがある場合のみ） */}
+            {!editTask && configuredProviders.length > 0 && (
               <div className="bg-gray-750 border border-gray-600 rounded p-3">
-                <label className="block text-xs text-gray-400 mb-1.5">Wrikeチケットから自動入力</label>
+                <label className="block text-xs text-gray-400 mb-1.5">
+                  チケットから自動入力（対応: {configuredProviders.map((p) => p.displayName).join(', ')}）
+                </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={wrikeUrl}
-                    onChange={(e) => { setWrikeUrl(e.target.value); setWrikeSuccess(false); setWrikeError('') }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleWrikeFetch() } }}
-                    placeholder="https://www.wrike.com/open.htm?id=..."
+                    value={ticketUrl}
+                    onChange={(e) => { setTicketUrl(e.target.value); setTicketSuccess(false); setTicketError('') }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleTicketFetch() } }}
+                    placeholder="チケットURL"
                     className={inputClass}
                   />
                   <button
                     type="button"
-                    onClick={handleWrikeFetch}
-                    disabled={wrikeFetching || !wrikeUrl.trim()}
+                    onClick={handleTicketFetch}
+                    disabled={ticketFetching || !ticketUrl.trim()}
                     className="px-3 py-1.5 rounded bg-purple-700 hover:bg-purple-600 text-white text-sm whitespace-nowrap disabled:opacity-40"
                   >
-                    {wrikeFetching ? '取得中...' : '取得'}
+                    {ticketFetching ? '取得中...' : '取得'}
                   </button>
                 </div>
-                {wrikeError && <p className="text-xs text-red-400 mt-1">{wrikeError}</p>}
-                {wrikeSuccess && <p className="text-xs text-green-400 mt-1">チケット情報を取得しました</p>}
+                {ticketError && <p className="text-xs text-red-400 mt-1">{ticketError}</p>}
+                {ticketSuccess && <p className="text-xs text-green-400 mt-1">チケット情報を取得しました</p>}
               </div>
             )}
 
@@ -270,7 +274,6 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
               />
             </div>
 
-            {/* Type-specific fields */}
             {(form.type === 'feat' || form.type === 'bugfix' || form.type === 'research') && (
               <div>
                 <label className={labelClass}>Branch{req}</label>
@@ -308,12 +311,12 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
 
             {(form.type === 'feat' || form.type === 'bugfix') && (
               <div>
-                <label className={labelClass}>Wrike Ticket URL{req}</label>
+                <label className={labelClass}>Ticket URL{req}</label>
                 <input
                   type="text"
                   value={form.ticket}
                   onChange={(e) => set('ticket', e.target.value)}
-                  placeholder="https://www.wrike.com/..."
+                  placeholder="チケットURL"
                   className={inputClass}
                   required
                 />
