@@ -10,13 +10,14 @@ export default function PaneStatusSidebar() {
   const openDevServerLog = useTerminalStore((s) => s.openDevServerLog)
   const tasks = useTaskStore((s) => s.tasks)
 
-  const toggleCollapse = (paneId: string) => {
+  const toggleCollapse = (repoId: string, paneId: string) => {
+    const key = `${repoId}:${paneId}`
     setCollapsedPanes((prev) => {
       const next = new Set(prev)
-      if (next.has(paneId)) {
-        next.delete(paneId)
+      if (next.has(key)) {
+        next.delete(key)
       } else {
-        next.add(paneId)
+        next.add(key)
       }
       return next
     })
@@ -60,8 +61,9 @@ export default function PaneStatusSidebar() {
     return '.../' + parts.slice(-2).join('/')
   }
 
-  const renderPane = (pane: PaneConfig) => {
-    const isCollapsed = collapsedPanes.has(pane.id)
+  const renderPane = (pane: PaneConfig, repoId: string) => {
+    const collapseKey = `${repoId}:${pane.id}`
+    const isCollapsed = collapsedPanes.has(collapseKey)
     const runningServers = pane.devServers.filter(
       (ds) => getServerStatus(pane.id, ds.label)?.running,
     )
@@ -72,7 +74,7 @@ export default function PaneStatusSidebar() {
       <div key={pane.id} className={`border-b border-gray-800 ${isActive ? 'bg-blue-950/30' : ''}`}>
         <button
           className={`w-full flex items-center gap-1 px-3 py-2 hover:bg-gray-800 text-left ${isActive ? 'border-l-2 border-blue-400' : 'border-l-2 border-transparent'}`}
-          onClick={() => toggleCollapse(pane.id)}
+          onClick={() => toggleCollapse(repoId, pane.id)}
         >
           <svg
             width="10"
@@ -170,7 +172,7 @@ export default function PaneStatusSidebar() {
               {repo.name}
             </div>
           )}
-          {repo.panes.map((pane) => renderPane(pane))}
+          {repo.panes.map((pane) => renderPane(pane, repo.id))}
         </div>
       ))}
     </div>
