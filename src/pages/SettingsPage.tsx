@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { AppSettings, RepoConfig, PaneConfig, DevServerConfig } from '../types/ipc'
-import type { TicketProviderMeta } from '../types/plugin'
 import ConfirmDialog from '../components/Common/ConfirmDialog'
 import Toast from '../components/Common/Toast'
 
@@ -36,20 +35,20 @@ function ArgsInput({
   )
 }
 
-// チケットの customItemTypeId 等を確認するヘルパー
-function TicketIdChecker({ configured, inputClass }: { configured: boolean; inputClass: string }) {
+// Wrikeチケットの customItemTypeId を確認するヘルパー
+function WrikeIdChecker({ token, inputClass }: { token?: string; inputClass: string }) {
   const [url, setUrl] = useState('')
   const [result, setResult] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
 
   const handleCheck = async () => {
-    if (!url.trim() || !configured) return
+    if (!url.trim() || !token) return
     setChecking(true)
     setResult(null)
     try {
-      const info = await window.api.ticket.fetch(url.trim())
-      if (info.meta?.customItemTypeId) {
-        setResult(`customItemTypeId: ${info.meta.customItemTypeId}`)
+      const info = await window.api.wrike.fetchTicket(url.trim())
+      if (info.customItemTypeId) {
+        setResult(`customItemTypeId: ${info.customItemTypeId}`)
       } else {
         setResult('このチケットにはカスタム項目タイプが設定されていません')
       }
@@ -68,13 +67,13 @@ function TicketIdChecker({ configured, inputClass }: { configured: boolean; inpu
           type="text"
           value={url}
           onChange={(e) => { setUrl(e.target.value); setResult(null) }}
-          placeholder="チケットURL"
+          placeholder="https://www.wrike.com/open.htm?id=..."
           className={`${inputClass} flex-1 text-xs`}
         />
         <button
           type="button"
           onClick={handleCheck}
-          disabled={checking || !url.trim() || !configured}
+          disabled={checking || !url.trim() || !token}
           className="px-3 py-1.5 rounded text-xs bg-gray-600 hover:bg-gray-500 text-white whitespace-nowrap disabled:opacity-40"
         >
           {checking ? '確認中...' : 'ID確認'}
@@ -99,7 +98,6 @@ type DeleteTarget =
 export default function SettingsPage() {
   const navigate = useNavigate()
   const [settings, setSettings] = useState<AppSettings>({ repos: [], promptTemplates: {} })
-  const [providers, setProviders] = useState<TicketProviderMeta[]>([])
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
@@ -109,7 +107,6 @@ export default function SettingsPage() {
 
   useEffect(() => {
     window.api.settings.get().then(setSettings)
-    window.api.ticket.providers().then(setProviders).catch(() => setProviders([]))
   }, [])
 
   const updateRepo = (ri: number, updates: Partial<RepoConfig>) => {
@@ -215,8 +212,6 @@ export default function SettingsPage() {
     try {
       await window.api.settings.set(settings)
       setToast({ message: '設定を保存しました', type: 'success' })
-      // 保存後にプロバイダー設定状態を再取得
-      window.api.ticket.providers().then(setProviders).catch(() => {})
     } catch {
       setToast({ message: '保存に失敗しました', type: 'error' })
     } finally {
@@ -465,41 +460,44 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* チケット連携プラグイン設定 */}
-        {providers.map((provider) => (
-          <section key={provider.id}>
-            <h2 className="text-sm font-semibold text-gray-300 mb-3">{provider.displayName} 連携</h2>
-            <div className="space-y-3">
-              {provider.settingFields.map((field) => (
-                <div key={field.key}>
-                  <label className="block text-xs text-gray-400 mb-1">{field.label}</label>
-                  <input
-                    type={field.type === 'password' ? 'password' : 'text'}
-                    value={settings.pluginSettings?.[provider.id]?.[field.key] ?? ''}
-                    onChange={(e) =>
-                      setSettings((prev) => ({
-                        ...prev,
-                        pluginSettings: {
-                          ...prev.pluginSettings,
-                          [provider.id]: {
-                            ...(prev.pluginSettings?.[provider.id] ?? {}),
-                            [field.key]: e.target.value,
-                          },
-                        },
-                      }))
-                    }
-                    placeholder={field.placeholder}
-                    className={`${inputClass} w-full max-w-md`}
-                  />
-                  {field.description && (
-                    <p className="text-xs text-gray-500 mt-1">{field.description}</p>
-                  )}
-                </div>
-              ))}
-              <TicketIdChecker configured={provider.configured} inputClass={inputClass} />
+        {/* Wrike 設定 */}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-300 mb-3">Wrike 連携</h2>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">アクセストークン</label>
+              <input
+                type="password"
+                value={settings.wrikeAccessToken ?? ''}
+                onChange={(e) => setSettings((prev) => ({ ...prev, wrikeAccessToken: e.target.value }))}
+                placeholder="Wrike personal access token"
+                className={`${inputClass} w-full max-w-md`}
+              />
+              <p className="text-xs text-gray-500 mt-1">Wrike設定 &gt; API &gt; Personal access tokens から発行（暗号化保存）</p>
             </div>
-          </section>
-        ))}
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">カスタム項目タイプID（feat）</label>
+              <input
+                type="text"
+                value={settings.wrikeItemTypeFeatId ?? ''}
+                onChange={(e) => setSettings((prev) => ({ ...prev, wrikeItemTypeFeatId: e.target.value }))}
+                placeholder="実装チケット の customItemTypeId"
+                className={`${inputClass} w-full max-w-md`}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">カスタム項目タイプID（bugfix）</label>
+              <input
+                type="text"
+                value={settings.wrikeItemTypeBugfixId ?? ''}
+                onChange={(e) => setSettings((prev) => ({ ...prev, wrikeItemTypeBugfixId: e.target.value }))}
+                placeholder="QA指摘 の customItemTypeId"
+                className={`${inputClass} w-full max-w-md`}
+              />
+            </div>
+            <WrikeIdChecker token={settings.wrikeAccessToken} inputClass={inputClass} />
+          </div>
+        </section>
 
         {/* GitHub PAT */}
         <section>

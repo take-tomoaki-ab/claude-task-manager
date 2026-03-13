@@ -9,25 +9,20 @@ import { GitService } from './services/GitService'
 import { ClaudeService } from './services/ClaudeService'
 import { DevServerService } from './services/DevServerService'
 import { GitHubService } from './services/GitHubService'
-import { PluginRegistry } from './plugins/PluginRegistry'
-import { WrikeTicketPlugin } from './plugins/ticket/WrikeTicketPlugin'
+import { WrikeService } from './services/WrikeService'
 import { registerTaskHandlers } from './ipc/tasks'
 import { registerTerminalHandlers } from './ipc/terminal'
 import { registerGitHandlers } from './ipc/git'
 import { registerClaudeHandlers } from './ipc/claude'
 import { registerDevServerHandlers } from './ipc/devServer'
 import { registerGitHubHandlers, syncReviewPRs } from './ipc/github'
-import { registerTicketHandlers } from './ipc/ticket'
+import { registerWrikeHandlers } from './ipc/wrike'
 import type { AppSettings } from '../../src/types/ipc'
 
 // bg:// カスタムプロトコルをセキュアとして登録（app.whenReady より前に必要）
 protocol.registerSchemesAsPrivileged([
   { scheme: 'bg', privileges: { secure: true, standard: true, supportFetchAPI: true } }
 ])
-
-// プラグインレジストリ（getSettings() から参照するためモジュールレベルで初期化）
-const registry = new PluginRegistry()
-registry.registerTicketPlugin(new WrikeTicketPlugin())
 
 let mainWindow: BrowserWindow | null = null
 let devServerServiceInstance: DevServerService | null = null
@@ -48,28 +43,13 @@ function getSettings(): AppSettings {
     return { repos: [] }
   }
 
-  const raw = JSON.parse(row.value) as Record<string, unknown>
+  const settings = JSON.parse(row.value) as AppSettings & { panes?: unknown }
 
   // 旧 panes 形式から repos 形式へのマイグレーション
-  if (raw.panes && !raw.repos) {
-    raw.repos = [{ id: 'repo1', name: 'default', panes: raw.panes as import('../../src/types/ipc').PaneConfig[] }]
-    delete raw.panes
+  if (settings.panes && !settings.repos) {
+    settings.repos = [{ id: 'repo1', name: 'default', panes: settings.panes as import('../../src/types/ipc').PaneConfig[] }]
+    delete settings.panes
   }
-
-  // 旧 wrikeAccessToken/wrikeItemTypeFeatId/wrikeItemTypeBugfixId → pluginSettings.wrike へのマイグレーション
-  if (raw.wrikeAccessToken !== undefined || raw.wrikeItemTypeFeatId !== undefined) {
-    if (!raw.pluginSettings) raw.pluginSettings = {}
-    ;(raw.pluginSettings as Record<string, Record<string, string>>)['wrike'] = {
-      accessToken: (raw.wrikeAccessToken as string) ?? '',
-      itemTypeFeatId: (raw.wrikeItemTypeFeatId as string) ?? '',
-      itemTypeBugfixId: (raw.wrikeItemTypeBugfixId as string) ?? '',
-    }
-    delete raw.wrikeAccessToken
-    delete raw.wrikeItemTypeFeatId
-    delete raw.wrikeItemTypeBugfixId
-  }
-
-  const settings = raw as AppSettings
 
   // Decrypt GitHub PAT if exists
   if (settings.githubPat && safeStorage.isEncryptionAvailable()) {
@@ -81,21 +61,13 @@ function getSettings(): AppSettings {
     }
   }
 
-  // Decrypt encrypted plugin settings
-  if (settings.pluginSettings && safeStorage.isEncryptionAvailable()) {
-    for (const plugin of registry.listTicketPlugins()) {
-      const ps = settings.pluginSettings[plugin.id]
-      if (!ps) continue
-      for (const field of plugin.settingFields) {
-        if (field.encrypted && ps[field.key]) {
-          try {
-            const encrypted = Buffer.from(ps[field.key], 'base64')
-            ps[field.key] = safeStorage.decryptString(encrypted)
-          } catch {
-            // Decryption failed, return as-is
-          }
-        }
-      }
+  // Decrypt Wrike access token if exists
+  if (settings.wrikeAccessToken && safeStorage.isEncryptionAvailable()) {
+    try {
+      const encrypted = Buffer.from(settings.wrikeAccessToken, 'base64')
+      settings.wrikeAccessToken = safeStorage.decryptString(encrypted)
+    } catch {
+      // Decryption failed, return as-is
     }
   }
 
@@ -152,6 +124,7 @@ app.whenReady().then(() => {
   const devServerService = new DevServerService()
   devServerServiceInstance = devServerService
   const gitHubService = new GitHubService()
+  const wrikeService = new WrikeService()
 
   // Register IPC handlers
   registerTaskHandlers(taskService, getSettings)
@@ -167,7 +140,7 @@ app.whenReady().then(() => {
   )
   registerDevServerHandlers(devServerService, getWindow, getSettings)
   registerGitHubHandlers(gitHubService, taskService, getSettings, getWindow)
-  registerTicketHandlers(registry, getSettings)
+  registerWrikeHandlers(wrikeService, getSettings)
 
   // PR自動同期タイマー（1分ごとにチェックし、設定された間隔で同期を実行）
   let lastPrSyncAt = 0
@@ -202,19 +175,11 @@ app.whenReady().then(() => {
           .toString('base64')
       }
 
-      // Encrypt encrypted plugin settings
-      if (merged.pluginSettings && safeStorage.isEncryptionAvailable()) {
-        for (const plugin of registry.listTicketPlugins()) {
-          const ps = merged.pluginSettings[plugin.id]
-          if (!ps) continue
-          for (const field of plugin.settingFields) {
-            if (field.encrypted && ps[field.key]) {
-              merged.pluginSettings[plugin.id][field.key] = safeStorage
-                .encryptString(ps[field.key])
-                .toString('base64')
-            }
-          }
-        }
+      // Encrypt Wrike access token
+      if (merged.wrikeAccessToken && safeStorage.isEncryptionAvailable()) {
+        merged.wrikeAccessToken = safeStorage
+          .encryptString(merged.wrikeAccessToken)
+          .toString('base64')
       }
 
       db.prepare(
@@ -277,25 +242,12 @@ app.whenReady().then(() => {
     const imported = JSON.parse(content) as Partial<AppSettings>
     const current = getSettings()
     const merged = { ...current, ...imported }
-
     if (merged.githubPat && safeStorage.isEncryptionAvailable()) {
       merged.githubPat = safeStorage.encryptString(merged.githubPat).toString('base64')
     }
-
-    if (merged.pluginSettings && safeStorage.isEncryptionAvailable()) {
-      for (const plugin of registry.listTicketPlugins()) {
-        const ps = merged.pluginSettings[plugin.id]
-        if (!ps) continue
-        for (const field of plugin.settingFields) {
-          if (field.encrypted && ps[field.key]) {
-            merged.pluginSettings[plugin.id][field.key] = safeStorage
-              .encryptString(ps[field.key])
-              .toString('base64')
-          }
-        }
-      }
+    if (merged.wrikeAccessToken && safeStorage.isEncryptionAvailable()) {
+      merged.wrikeAccessToken = safeStorage.encryptString(merged.wrikeAccessToken).toString('base64')
     }
-
     db.prepare(`INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)`).run('settings', JSON.stringify(merged))
     return getSettings()
   })
