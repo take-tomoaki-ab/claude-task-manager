@@ -1,3 +1,10 @@
+export type PluginCatalogEntry = {
+  id: string
+  displayName: string
+  description: string
+  category: 'ticket'
+}
+
 export type PluginSettingField = {
   key: string
   label: string

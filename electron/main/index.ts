@@ -10,7 +10,7 @@ import { ClaudeService } from './services/ClaudeService'
 import { DevServerService } from './services/DevServerService'
 import { GitHubService } from './services/GitHubService'
 import { PluginRegistry } from './plugins/PluginRegistry'
-import { WrikeTicketPlugin } from './plugins/ticket/WrikeTicketPlugin'
+import { PLUGIN_CATALOG } from './plugins/catalog'
 import { registerTaskHandlers } from './ipc/tasks'
 import { registerTerminalHandlers } from './ipc/terminal'
 import { registerGitHandlers } from './ipc/git'
@@ -27,7 +27,6 @@ protocol.registerSchemesAsPrivileged([
 
 // プラグインレジストリ（getSettings() から参照するためモジュールレベルで初期化）
 const registry = new PluginRegistry()
-registry.registerTicketPlugin(new WrikeTicketPlugin())
 
 let mainWindow: BrowserWindow | null = null
 let devServerServiceInstance: DevServerService | null = null
@@ -67,6 +66,12 @@ function getSettings(): AppSettings {
     delete raw.wrikeAccessToken
     delete raw.wrikeItemTypeFeatId
     delete raw.wrikeItemTypeBugfixId
+  }
+
+  // enabledPlugins マイグレーション: 未設定かつ wrike accessToken 設定済みなら ['wrike'] に
+  if (!raw.enabledPlugins) {
+    const hasWrikeToken = !!(raw.pluginSettings as Record<string, Record<string, string>> | undefined)?.wrike?.accessToken
+    raw.enabledPlugins = hasWrikeToken ? ['wrike'] : []
   }
 
   const settings = raw as AppSettings
@@ -143,6 +148,42 @@ app.whenReady().then(() => {
   db.prepare(`UPDATE tasks SET status = 'will_do' WHERE status = 'doing'`).run()
   db.prepare(`DELETE FROM task_runtime`).run()
 
+  // 設定保存ヘルパー（暗号化 + DB保存）
+  function saveSettings(merged: AppSettings): void {
+    const toSave = { ...merged }
+    if (toSave.githubPat && safeStorage.isEncryptionAvailable()) {
+      toSave.githubPat = safeStorage.encryptString(toSave.githubPat).toString('base64')
+    }
+    if (toSave.pluginSettings && safeStorage.isEncryptionAvailable()) {
+      for (const plugin of registry.listTicketPlugins()) {
+        const ps = toSave.pluginSettings[plugin.id]
+        if (!ps) continue
+        for (const field of plugin.settingFields) {
+          if (field.encrypted && ps[field.key]) {
+            toSave.pluginSettings[plugin.id][field.key] = safeStorage
+              .encryptString(ps[field.key])
+              .toString('base64')
+          }
+        }
+      }
+    }
+    db.prepare(`INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)`).run(
+      'settings',
+      JSON.stringify(toSave)
+    )
+  }
+
+  // 起動時: enabledPlugins に基づいてプラグインを条件付き登録
+  {
+    const initialSettings = getSettings()
+    const enabled = initialSettings.enabledPlugins ?? []
+    for (const item of PLUGIN_CATALOG) {
+      if (enabled.includes(item.id)) {
+        registry.registerTicketPlugin(item.factory())
+      }
+    }
+  }
+
   // Initialize services
   const taskService = new TaskService(db)
   const terminalService = new TerminalService()
@@ -194,32 +235,7 @@ app.whenReady().then(() => {
     try {
       const current = getSettings()
       const merged = { ...current, ...settings }
-
-      // Encrypt GitHub PAT
-      if (merged.githubPat && safeStorage.isEncryptionAvailable()) {
-        merged.githubPat = safeStorage
-          .encryptString(merged.githubPat)
-          .toString('base64')
-      }
-
-      // Encrypt encrypted plugin settings
-      if (merged.pluginSettings && safeStorage.isEncryptionAvailable()) {
-        for (const plugin of registry.listTicketPlugins()) {
-          const ps = merged.pluginSettings[plugin.id]
-          if (!ps) continue
-          for (const field of plugin.settingFields) {
-            if (field.encrypted && ps[field.key]) {
-              merged.pluginSettings[plugin.id][field.key] = safeStorage
-                .encryptString(ps[field.key])
-                .toString('base64')
-            }
-          }
-        }
-      }
-
-      db.prepare(
-        `INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)`
-      ).run('settings', JSON.stringify(merged))
+      saveSettings(merged)
     } catch (error) {
       throw new Error(`Failed to save settings: ${(error as Error).message}`)
     }
@@ -277,27 +293,31 @@ app.whenReady().then(() => {
     const imported = JSON.parse(content) as Partial<AppSettings>
     const current = getSettings()
     const merged = { ...current, ...imported }
-
-    if (merged.githubPat && safeStorage.isEncryptionAvailable()) {
-      merged.githubPat = safeStorage.encryptString(merged.githubPat).toString('base64')
-    }
-
-    if (merged.pluginSettings && safeStorage.isEncryptionAvailable()) {
-      for (const plugin of registry.listTicketPlugins()) {
-        const ps = merged.pluginSettings[plugin.id]
-        if (!ps) continue
-        for (const field of plugin.settingFields) {
-          if (field.encrypted && ps[field.key]) {
-            merged.pluginSettings[plugin.id][field.key] = safeStorage
-              .encryptString(ps[field.key])
-              .toString('base64')
-          }
-        }
-      }
-    }
-
-    db.prepare(`INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)`).run('settings', JSON.stringify(merged))
+    saveSettings(merged)
     return getSettings()
+  })
+
+  // Plugin handlers
+  ipcMain.handle('plugin:catalog', async () => {
+    return PLUGIN_CATALOG.map(({ factory: _factory, ...meta }) => meta)
+  })
+
+  ipcMain.handle('plugin:install', async (_, id: string) => {
+    const item = PLUGIN_CATALOG.find((c) => c.id === id)
+    if (!item) throw new Error(`Unknown plugin: ${id}`)
+    if (!registry.listTicketPlugins().find((p) => p.id === id)) {
+      registry.registerTicketPlugin(item.factory())
+    }
+    const current = getSettings()
+    const enabled = [...new Set([...(current.enabledPlugins ?? []), id])]
+    saveSettings({ ...current, enabledPlugins: enabled })
+  })
+
+  ipcMain.handle('plugin:uninstall', async (_, id: string) => {
+    registry.unregisterTicketPlugin(id)
+    const current = getSettings()
+    const enabled = (current.enabledPlugins ?? []).filter((p) => p !== id)
+    saveSettings({ ...current, enabledPlugins: enabled })
   })
 
   // bg:// プロトコル → ローカル画像ファイルを直接読んで返す

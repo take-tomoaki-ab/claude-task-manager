@@ -7,6 +7,10 @@ export class PluginRegistry {
     this.ticketPlugins.set(plugin.id, plugin)
   }
 
+  unregisterTicketPlugin(id: string): void {
+    this.ticketPlugins.delete(id)
+  }
+
   findTicketPlugin(url: string): TicketPlugin | undefined {
     for (const plugin of this.ticketPlugins.values()) {
       if (plugin.canHandle(url)) return plugin

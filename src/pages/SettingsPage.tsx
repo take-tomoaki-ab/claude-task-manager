@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { AppSettings, RepoConfig, PaneConfig, DevServerConfig } from '../types/ipc'
-import type { TicketProviderMeta } from '../types/plugin'
+import type { TicketProviderMeta, PluginCatalogEntry } from '../types/plugin'
 import ConfirmDialog from '../components/Common/ConfirmDialog'
 import Toast from '../components/Common/Toast'
 
@@ -99,6 +99,8 @@ export default function SettingsPage() {
   const navigate = useNavigate()
   const [settings, setSettings] = useState<AppSettings>({ repos: [], promptTemplates: {} })
   const [providers, setProviders] = useState<TicketProviderMeta[]>([])
+  const [catalog, setCatalog] = useState<PluginCatalogEntry[]>([])
+  const [pluginLoading, setPluginLoading] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
@@ -109,6 +111,7 @@ export default function SettingsPage() {
   useEffect(() => {
     window.api.settings.get().then(setSettings)
     window.api.ticket.providers().then(setProviders).catch(() => setProviders([]))
+    window.api.ticket.catalog().then(setCatalog).catch(() => setCatalog([]))
   }, [])
 
   const updateRepo = (ri: number, updates: Partial<RepoConfig>) => {
@@ -221,6 +224,27 @@ export default function SettingsPage() {
       setSaving(false)
     }
   }
+
+  const handlePluginToggle = useCallback(async (id: string, currentlyEnabled: boolean) => {
+    setPluginLoading(id)
+    try {
+      if (currentlyEnabled) {
+        await window.api.ticket.uninstall(id)
+      } else {
+        await window.api.ticket.install(id)
+      }
+      const [newSettings, newProviders] = await Promise.all([
+        window.api.settings.get(),
+        window.api.ticket.providers().catch(() => [] as TicketProviderMeta[])
+      ])
+      setSettings(newSettings)
+      setProviders(newProviders)
+    } catch (e) {
+      setToast({ message: `プラグイン操作に失敗しました: ${(e as Error).message}`, type: 'error' })
+    } finally {
+      setPluginLoading(null)
+    }
+  }, [])
 
   const handleSyncPRs = useCallback(async () => {
     setPrSyncing(true)
@@ -459,6 +483,41 @@ export default function SettingsPage() {
             })}
           </div>
         </section>
+
+        {/* プラグイン管理 */}
+        {catalog.length > 0 && (
+          <section>
+            <h2 className="text-sm font-semibold text-gray-300 mb-3">プラグイン管理</h2>
+            <div className="space-y-2">
+              {catalog.map((entry) => {
+                const isEnabled = (settings.enabledPlugins ?? []).includes(entry.id)
+                const loading = pluginLoading === entry.id
+                return (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between bg-gray-800 rounded px-4 py-3"
+                  >
+                    <div>
+                      <span className="text-sm text-white font-medium">{entry.displayName}</span>
+                      <span className="text-xs text-gray-400 ml-3">{entry.description}</span>
+                    </div>
+                    <button
+                      onClick={() => handlePluginToggle(entry.id, isEnabled)}
+                      disabled={loading}
+                      className={`px-3 py-1 rounded text-xs font-medium whitespace-nowrap disabled:opacity-40 ${
+                        isEnabled
+                          ? 'bg-red-700 hover:bg-red-600 text-white'
+                          : 'bg-green-700 hover:bg-green-600 text-white'
+                      }`}
+                    >
+                      {loading ? '処理中...' : isEnabled ? 'アンインストール' : 'インストール'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
         {/* チケット連携プラグイン設定（動的レンダリング） */}
         {providers.map((provider) => (

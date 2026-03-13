@@ -111,7 +111,10 @@ const api = {
 
   ticket: {
     fetch: (url: string) => ipcRenderer.invoke('ticket:fetch', url),
-    providers: () => ipcRenderer.invoke('ticket:providers')
+    providers: () => ipcRenderer.invoke('ticket:providers'),
+    catalog: () => ipcRenderer.invoke('plugin:catalog'),
+    install: (id: string) => ipcRenderer.invoke('plugin:install', id),
+    uninstall: (id: string) => ipcRenderer.invoke('plugin:uninstall', id)
   }
 }
 

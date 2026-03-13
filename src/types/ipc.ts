@@ -1,5 +1,5 @@
 import type { Task, RuntimeTask, ArchiveEntry, RuntimeTaskState, DistributiveOmit } from './task'
-import type { TicketProviderMeta, TicketFetchResult } from './plugin'
+import type { TicketProviderMeta, TicketFetchResult, PluginCatalogEntry } from './plugin'
 
 // pane設定
 export type DevServerConfig = {
@@ -33,6 +33,7 @@ export type AppSettings = {
   backgroundIntervalSec?: number  // スライドショー間隔（秒）
   notificationsEnabled?: boolean  // デスクトップ通知を有効にするか（デフォルト: true）
   pluginSettings?: Record<string, Record<string, string>>  // チケットプラグイン設定（暗号化フィールドはsafeStorage管理）
+  enabledPlugins?: string[]  // 有効なプラグインIDの一覧
 }
 
 // Git status
@@ -118,6 +119,11 @@ export type IpcChannels = {
   // Ticket
   'ticket:fetch': [string, TicketFetchResult]
   'ticket:providers': [void, TicketProviderMeta[]]
+
+  // Plugin
+  'plugin:catalog': [void, PluginCatalogEntry[]]
+  'plugin:install': [string, void]
+  'plugin:uninstall': [string, void]
 }
 
 // window.api の型定義（preload で expose するもの）
@@ -177,5 +183,8 @@ export type WindowApi = {
   ticket: {
     fetch: (url: string) => Promise<TicketFetchResult>
     providers: () => Promise<TicketProviderMeta[]>
+    catalog: () => Promise<PluginCatalogEntry[]>
+    install: (id: string) => Promise<void>
+    uninstall: (id: string) => Promise<void>
   }
 }
