@@ -19,7 +19,7 @@ export function registerDevServerHandlers(
     async (_, { paneId, label }: { paneId: string; label: string }) => {
       try {
         const settings = getSettings()
-        const paneConfig = settings.panes.find((p) => p.id === paneId)
+        const paneConfig = settings.repos.flatMap((r) => r.panes).find((p) => p.id === paneId)
         if (!paneConfig) {
           throw new Error(`Pane not found: ${paneId}`)
         }

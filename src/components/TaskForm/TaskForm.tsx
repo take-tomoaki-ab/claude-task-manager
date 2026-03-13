@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { TaskType, RuntimeTask } from '../../types/task'
+import type { RepoConfig } from '../../types/ipc'
 import { useTaskStore } from '../../stores/taskStore'
 
 type Props = {
@@ -11,6 +12,7 @@ type Props = {
 const INITIAL_FORM = {
   type: 'feat' as TaskType,
   title: '',
+  repoId: '',
   branch: '',
   baseBranch: '',
   ticket: '',
@@ -25,6 +27,7 @@ function taskToForm(task: RuntimeTask) {
   return {
     type: task.type,
     title: task.title,
+    repoId: task.repoId ?? '',
     depends_on: task.depends_on ?? '',
     branch: 'branch' in task ? (task.branch ?? '') : '',
     baseBranch: ('baseBranch' in task ? (task.baseBranch ?? '') : '') as string,
@@ -38,6 +41,7 @@ function taskToForm(task: RuntimeTask) {
 
 export default function TaskForm({ isOpen, onClose, editTask }: Props) {
   const [form, setForm] = useState(INITIAL_FORM)
+  const [repos, setRepos] = useState<RepoConfig[]>([])
   const [availableBranches, setAvailableBranches] = useState<string[]>([])
   const [branchSourceDir, setBranchSourceDir] = useState<string>('')
   const [branchLoadError, setBranchLoadError] = useState<string>('')
@@ -49,37 +53,53 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
   const createTask = useTaskStore((s) => s.createTask)
   const updateTask = useTaskStore((s) => s.updateTask)
 
+  const loadBranches = (repoId: string, allRepos: RepoConfig[]) => {
+    setAvailableBranches([])
+    setBranchSourceDir('')
+    setBranchLoadError('')
+    const repo = repoId ? allRepos.find((r) => r.id === repoId) : allRepos[0]
+    const firstPane = repo?.panes[0]
+    if (!firstPane?.path) {
+      setBranchLoadError('リポジトリにペインが未登録です')
+      return
+    }
+    setBranchSourceDir(firstPane.path)
+    window.api.git.branches(firstPane.path)
+      .then((branches) => {
+        if (branches.length === 0) {
+          setBranchLoadError('ブランチが取得できませんでした')
+        }
+        setAvailableBranches(branches)
+        if (!editTask && branches.includes('main')) {
+          setForm((prev) => ({ ...prev, baseBranch: 'main' }))
+        }
+      })
+      .catch((e: Error) => setBranchLoadError(e.message))
+  }
+
   useEffect(() => {
     if (isOpen) {
-      setForm(editTask ? taskToForm(editTask) : INITIAL_FORM)
-      setAvailableBranches([])
-      setBranchSourceDir('')
-      setBranchLoadError('')
+      const initialForm = editTask ? taskToForm(editTask) : INITIAL_FORM
+      setForm(initialForm)
       setWrikeUrl('')
       setWrikeError('')
       setWrikeSuccess(false)
-      // フォームが開いたらブランチ一覧を取得（最初のペインから）
+      // フォームが開いたらリポジトリ一覧・ブランチ一覧を取得
       window.api.settings.get().then((settings) => {
-        const firstPane = settings.panes[0]
-        if (!firstPane?.path) {
-          setBranchLoadError('設定にペインが未登録です')
+        const allRepos = settings.repos ?? []
+        setRepos(allRepos)
+        if (allRepos.length === 0) {
+          setBranchLoadError('設定にリポジトリが未登録です')
           return
         }
-        setBranchSourceDir(firstPane.path)
-        window.api.git.branches(firstPane.path)
-          .then((branches) => {
-            if (branches.length === 0) {
-              setBranchLoadError('ブランチが取得できませんでした')
-            }
-            setAvailableBranches(branches)
-            if (!editTask && branches.includes('main')) {
-              setForm((prev) => ({ ...prev, baseBranch: 'main' }))
-            }
-          })
-          .catch((e: Error) => setBranchLoadError(e.message))
+        const repoId = initialForm.repoId || allRepos[0]?.id || ''
+        if (!initialForm.repoId) {
+          setForm((prev) => ({ ...prev, repoId }))
+        }
+        loadBranches(repoId, allRepos)
       })
     }
-  }, [isOpen, editTask])
+  }, [isOpen, editTask])  // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!isOpen) return null
 
@@ -136,19 +156,19 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
       }
       switch (form.type) {
         case 'feat':
-          await createTask({ ...base, type: 'feat', branch: form.branch, baseBranch: form.baseBranch || undefined, ticket: form.ticket, prompt: form.prompt || undefined })
+          await createTask({ ...base, type: 'feat', repoId: form.repoId || undefined, branch: form.branch, baseBranch: form.baseBranch || undefined, ticket: form.ticket, prompt: form.prompt || undefined })
           break
         case 'design':
-          await createTask({ ...base, type: 'design', output: form.output, prompt: form.prompt || undefined })
+          await createTask({ ...base, type: 'design', repoId: form.repoId || undefined, output: form.output, prompt: form.prompt || undefined })
           break
         case 'review':
-          await createTask({ ...base, type: 'review', url: form.url, prompt: form.prompt || undefined })
+          await createTask({ ...base, type: 'review', repoId: form.repoId || undefined, url: form.url, prompt: form.prompt || undefined })
           break
         case 'bugfix':
-          await createTask({ ...base, type: 'bugfix', branch: form.branch, baseBranch: form.baseBranch || undefined, ticket: form.ticket, prompt: form.prompt || undefined })
+          await createTask({ ...base, type: 'bugfix', repoId: form.repoId || undefined, branch: form.branch, baseBranch: form.baseBranch || undefined, ticket: form.ticket, prompt: form.prompt || undefined })
           break
         case 'research':
-          await createTask({ ...base, type: 'research', branch: form.branch, prompt: form.prompt })
+          await createTask({ ...base, type: 'research', repoId: form.repoId || undefined, branch: form.branch, prompt: form.prompt })
           break
         case 'chore':
           await createTask({ ...base, type: 'chore', directory: form.directory, prompt: form.prompt || undefined })
@@ -216,6 +236,26 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
                 </select>
               )}
             </div>
+
+            {/* Repository (chore以外) */}
+            {form.type !== 'chore' && repos.length > 0 && (
+              <div>
+                <label className={labelClass}>リポジトリ{req}</label>
+                <select
+                  value={form.repoId}
+                  onChange={(e) => {
+                    const repoId = e.target.value
+                    set('repoId', repoId)
+                    loadBranches(repoId, repos)
+                  }}
+                  className={inputClass}
+                >
+                  {repos.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Title */}
             <div>

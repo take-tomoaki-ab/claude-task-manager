@@ -47,13 +47,20 @@ export function registerClaudeHandlers(
           // chore は directory を直接使用（pane不要）
           resolvedWorkdir = expandPath(task.directory)
         } else {
-          // non-chore: 空きペインを自動割り当て
+          // non-chore: タスクのリポジトリ内の空きペインを自動割り当て
           const occupiedPaneIds = new Set(
             tasks
               .filter((t) => t.id !== taskId && t.status === 'doing' && t.pane)
               .map((t) => t.pane)
           )
-          const freePaneConfig = settings.panes.find((p) => !occupiedPaneIds.has(p.id))
+          const repoId = 'repoId' in task ? task.repoId : undefined
+          const repo = repoId
+            ? settings.repos.find((r) => r.id === repoId)
+            : settings.repos[0]
+          if (!repo) {
+            throw new Error('NO_REPO_ASSIGNED')
+          }
+          const freePaneConfig = repo.panes.find((p) => !occupiedPaneIds.has(p.id))
           if (!freePaneConfig) {
             throw new Error('NO_FREE_PANE')
           }

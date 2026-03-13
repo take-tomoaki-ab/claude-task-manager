@@ -9,6 +9,7 @@ export type BaseTask = {
   status: TaskStatus
   depends_on?: string
   pane: string
+  repoId?: string
   title: string
   created_at?: string
 }

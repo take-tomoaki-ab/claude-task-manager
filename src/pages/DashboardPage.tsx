@@ -7,7 +7,7 @@ import TaskForm from '../components/TaskForm/TaskForm'
 import TerminalPanel from '../components/Terminal/TerminalPanel'
 import { useTerminalStore } from '../stores/terminalStore'
 import type { TaskStatus, RuntimeTask } from '../types/task'
-import type { PaneConfig } from '../types/ipc'
+import type { RepoConfig } from '../types/ipc'
 
 const COLUMNS: { status: TaskStatus; label: string; borderColor: string }[] = [
   { status: 'will_do', label: '未実行', borderColor: 'border-t-gray-500' },
@@ -18,7 +18,7 @@ const COLUMNS: { status: TaskStatus; label: string; borderColor: string }[] = [
 export default function DashboardPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<RuntimeTask | null>(null)
-  const [panes, setPanes] = useState<PaneConfig[]>([])
+  const [repos, setRepos] = useState<RepoConfig[]>([])
   const fetchTasks = useTaskStore((s) => s.fetchTasks)
   const filteredTasks = useTaskStore((s) => s.filteredTasks)
   const tasks = useTaskStore((s) => s.tasks)
@@ -27,7 +27,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchTasks()
-    window.api.settings.get().then((s) => setPanes(s.panes))
+    window.api.settings.get().then((s) => setRepos(s.repos ?? []))
   }, [fetchTasks])
 
   useEffect(() => {
@@ -36,11 +36,18 @@ export default function DashboardPage() {
     })
   }, [fetchTasks])
 
-  // 実行中タスクが占有しているペインを除いた空きペインの有無
+  // タスクごとに、そのリポジトリに空きペインがあるか判定
   const occupiedPaneIds = new Set(
     tasks.filter((t) => t.status === 'doing' && t.pane).map((t) => t.pane)
   )
-  const hasFreePane = panes.some((p) => !occupiedPaneIds.has(p.id))
+  const hasFreePaneForTask = (task: RuntimeTask): boolean => {
+    if (task.type === 'chore') return true
+    const repo = task.repoId
+      ? repos.find((r) => r.id === task.repoId)
+      : repos[0]
+    if (!repo) return false
+    return repo.panes.some((p) => !occupiedPaneIds.has(p.id))
+  }
 
   return (
     <div className="h-screen flex flex-col">
@@ -77,7 +84,7 @@ export default function DashboardPage() {
                     <TaskCard
                       key={task.id}
                       task={task}
-                      hasFreePane={hasFreePane}
+                      hasFreePane={hasFreePaneForTask(task)}
                       onEdit={task.status === 'will_do' ? (t) => { setEditingTask(t); setFormOpen(true) } : undefined}
                     />
                   ))}

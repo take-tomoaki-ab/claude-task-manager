@@ -40,10 +40,16 @@ function getSettings(): AppSettings {
     | undefined
 
   if (!row) {
-    return { panes: [] }
+    return { repos: [] }
   }
 
-  const settings = JSON.parse(row.value) as AppSettings
+  const settings = JSON.parse(row.value) as AppSettings & { panes?: unknown }
+
+  // 旧 panes 形式から repos 形式へのマイグレーション
+  if (settings.panes && !settings.repos) {
+    settings.repos = [{ id: 'repo1', name: 'default', panes: settings.panes as import('../../src/types/ipc').PaneConfig[] }]
+    delete settings.panes
+  }
 
   // Decrypt GitHub PAT if exists
   if (settings.githubPat && safeStorage.isEncryptionAvailable()) {

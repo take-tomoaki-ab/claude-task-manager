@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { AppSettings, PaneConfig, DevServerConfig } from '../types/ipc'
+import type { AppSettings, RepoConfig, PaneConfig, DevServerConfig } from '../types/ipc'
 import ConfirmDialog from '../components/Common/ConfirmDialog'
 import Toast from '../components/Common/Toast'
 
@@ -91,12 +91,13 @@ function WrikeIdChecker({ token, inputClass }: { token?: string; inputClass: str
 const TASK_TYPES = ['feat', 'design', 'review', 'bugfix', 'research', 'chore'] as const
 
 type DeleteTarget =
-  | { kind: 'pane'; paneIndex: number }
-  | { kind: 'devserver'; paneIndex: number; dsIndex: number }
+  | { kind: 'repo'; repoIndex: number }
+  | { kind: 'pane'; repoIndex: number; paneIndex: number }
+  | { kind: 'devserver'; repoIndex: number; paneIndex: number; dsIndex: number }
 
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const [settings, setSettings] = useState<AppSettings>({ panes: [], promptTemplates: {} })
+  const [settings, setSettings] = useState<AppSettings>({ repos: [], promptTemplates: {} })
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
@@ -108,65 +109,99 @@ export default function SettingsPage() {
     window.api.settings.get().then(setSettings)
   }, [])
 
-  const updatePane = (index: number, updates: Partial<PaneConfig>) => {
+  const updateRepo = (ri: number, updates: Partial<RepoConfig>) => {
     setSettings((prev) => {
-      const panes = [...prev.panes]
-      panes[index] = { ...panes[index], ...updates }
-      return { ...prev, panes }
+      const repos = [...prev.repos]
+      repos[ri] = { ...repos[ri], ...updates }
+      return { ...prev, repos }
     })
   }
 
-  const addPane = () => {
+  const addRepo = () => {
     setSettings((prev) => ({
       ...prev,
-      panes: [...prev.panes, { id: '', path: '', devServers: [] }]
+      repos: [...prev.repos, { id: '', name: '', panes: [] }]
     }))
   }
 
-  const removePane = (index: number) => {
-    setDeleteTarget({ kind: 'pane', paneIndex: index })
+  const removeRepo = (ri: number) => {
+    setDeleteTarget({ kind: 'repo', repoIndex: ri })
   }
 
-  const updateDevServer = (paneIndex: number, dsIndex: number, updates: Partial<DevServerConfig>) => {
+  const updatePane = (ri: number, pi: number, updates: Partial<PaneConfig>) => {
     setSettings((prev) => {
-      const panes = [...prev.panes]
-      const devServers = [...panes[paneIndex].devServers]
-      devServers[dsIndex] = { ...devServers[dsIndex], ...updates }
-      panes[paneIndex] = { ...panes[paneIndex], devServers }
-      return { ...prev, panes }
+      const repos = [...prev.repos]
+      const panes = [...repos[ri].panes]
+      panes[pi] = { ...panes[pi], ...updates }
+      repos[ri] = { ...repos[ri], panes }
+      return { ...prev, repos }
     })
   }
 
-  const addDevServer = (paneIndex: number) => {
+  const addPane = (ri: number) => {
     setSettings((prev) => {
-      const panes = [...prev.panes]
-      panes[paneIndex] = {
-        ...panes[paneIndex],
-        devServers: [...panes[paneIndex].devServers, { label: '', command: '', args: [] }]
-      }
-      return { ...prev, panes }
+      const repos = [...prev.repos]
+      repos[ri] = { ...repos[ri], panes: [...repos[ri].panes, { id: '', path: '', devServers: [] }] }
+      return { ...prev, repos }
     })
   }
 
-  const removeDevServer = (paneIndex: number, dsIndex: number) => {
-    setDeleteTarget({ kind: 'devserver', paneIndex, dsIndex })
+  const removePane = (ri: number, pi: number) => {
+    setDeleteTarget({ kind: 'pane', repoIndex: ri, paneIndex: pi })
+  }
+
+  const updateDevServer = (ri: number, pi: number, di: number, updates: Partial<DevServerConfig>) => {
+    setSettings((prev) => {
+      const repos = [...prev.repos]
+      const panes = [...repos[ri].panes]
+      const devServers = [...panes[pi].devServers]
+      devServers[di] = { ...devServers[di], ...updates }
+      panes[pi] = { ...panes[pi], devServers }
+      repos[ri] = { ...repos[ri], panes }
+      return { ...prev, repos }
+    })
+  }
+
+  const addDevServer = (ri: number, pi: number) => {
+    setSettings((prev) => {
+      const repos = [...prev.repos]
+      const panes = [...repos[ri].panes]
+      panes[pi] = { ...panes[pi], devServers: [...panes[pi].devServers, { label: '', command: '', args: [] }] }
+      repos[ri] = { ...repos[ri], panes }
+      return { ...prev, repos }
+    })
+  }
+
+  const removeDevServer = (ri: number, pi: number, di: number) => {
+    setDeleteTarget({ kind: 'devserver', repoIndex: ri, paneIndex: pi, dsIndex: di })
   }
 
   const confirmDelete = () => {
     if (!deleteTarget) return
-    if (deleteTarget.kind === 'pane') {
+    if (deleteTarget.kind === 'repo') {
       setSettings((prev) => ({
         ...prev,
-        panes: prev.panes.filter((_, i) => i !== deleteTarget.paneIndex)
+        repos: prev.repos.filter((_, i) => i !== deleteTarget.repoIndex)
       }))
+    } else if (deleteTarget.kind === 'pane') {
+      setSettings((prev) => {
+        const repos = [...prev.repos]
+        repos[deleteTarget.repoIndex] = {
+          ...repos[deleteTarget.repoIndex],
+          panes: repos[deleteTarget.repoIndex].panes.filter((_, i) => i !== deleteTarget.paneIndex)
+        }
+        return { ...prev, repos }
+      })
     } else {
       setSettings((prev) => {
-        const panes = [...prev.panes]
+        const repos = [...prev.repos]
+        const panes = [...repos[deleteTarget.repoIndex].panes]
         panes[deleteTarget.paneIndex] = {
           ...panes[deleteTarget.paneIndex],
           devServers: panes[deleteTarget.paneIndex].devServers.filter((_, i) => i !== deleteTarget.dsIndex)
         }
-        return { ...prev, panes }
+        repos[deleteTarget.repoIndex] = { ...repos[deleteTarget.repoIndex], panes }
+        return { ...prev, repos }
       })
     }
     setDeleteTarget(null)
@@ -211,92 +246,139 @@ export default function SettingsPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Pane Settings */}
+        {/* Repository / Pane Settings */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-300 mb-3">Pane マッピング</h2>
+          <h2 className="text-sm font-semibold text-gray-300 mb-3">リポジトリ / Pane マッピング</h2>
 
-          {settings.panes.map((pane, pi) => (
-            <div key={pi} className="bg-gray-800 rounded-lg p-4 mb-3">
+          {settings.repos.map((repo, ri) => (
+            <div key={ri} className="bg-gray-800 rounded-lg p-4 mb-4">
+              {/* Repo header */}
               <div className="flex items-center gap-3 mb-3">
                 <input
                   type="text"
-                  value={pane.id}
-                  onChange={(e) => updatePane(pi, { id: e.target.value })}
-                  placeholder="Pane ID (例: p1)"
+                  value={repo.id}
+                  onChange={(e) => updateRepo(ri, { id: e.target.value })}
+                  placeholder="Repo ID (例: repo1)"
                   className={`${inputClass} w-32`}
                 />
                 <input
                   type="text"
-                  value={pane.path}
-                  onChange={(e) => updatePane(pi, { path: e.target.value })}
-                  placeholder="絶対パス"
+                  value={repo.name}
+                  onChange={(e) => updateRepo(ri, { name: e.target.value })}
+                  placeholder="表示名 (例: mep-frontend)"
                   className={`${inputClass} flex-1`}
                 />
                 <button
-                  onClick={() => removePane(pi)}
+                  onClick={() => removeRepo(ri)}
                   className="px-2 py-1 rounded text-xs bg-red-600 hover:bg-red-700 text-white"
                 >
                   削除
                 </button>
               </div>
 
-              {/* Dev Servers */}
-              <div className="pl-4 border-l-2 border-gray-700">
-                <span className="text-xs text-gray-400 block mb-2">Dev Servers</span>
-                {pane.devServers.map((ds, di) => (
-                  <div key={di} className="flex items-center gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={ds.label}
-                      onChange={(e) => updateDevServer(pi, di, { label: e.target.value })}
-                      placeholder="Label"
-                      className={`${inputClass} flex-[3] min-w-0`}
-                    />
-                    <input
-                      type="text"
-                      value={ds.command}
-                      onChange={(e) => updateDevServer(pi, di, { command: e.target.value })}
-                      placeholder="Command"
-                      className={`${inputClass} flex-[2] min-w-0`}
-                    />
-                    <ArgsInput
-                      value={ds.args}
-                      onChange={(args) => updateDevServer(pi, di, { args })}
-                      placeholder="Args (space sep)"
-                      className={`${inputClass} flex-[3] min-w-0`}
-                    />
-                    <input
-                      type="number"
-                      value={ds.port ?? ''}
-                      onChange={(e) =>
-                        updateDevServer(pi, di, { port: e.target.value ? Number(e.target.value) : undefined })
-                      }
-                      placeholder="Port"
-                      className={`${inputClass} flex-[2] min-w-0`}
-                    />
-                    <button
-                      onClick={() => removeDevServer(pi, di)}
-                      className="px-2 py-0.5 rounded text-xs bg-red-600 hover:bg-red-700 text-white"
-                    >
-                      x
-                    </button>
+              {/* Panes within repo */}
+              <div className="pl-4 border-l-2 border-gray-600 space-y-3">
+                <span className="text-xs text-gray-400">Panes</span>
+                {repo.panes.map((pane, pi) => (
+                  <div key={pi} className="bg-gray-750 border border-gray-700 rounded p-3">
+                    <div className="flex items-center gap-3 mb-2">
+                      <input
+                        type="text"
+                        value={pane.id}
+                        onChange={(e) => updatePane(ri, pi, { id: e.target.value })}
+                        placeholder="Pane ID (例: p1)"
+                        className={`${inputClass} w-28`}
+                      />
+                      <input
+                        type="text"
+                        value={pane.path}
+                        onChange={(e) => updatePane(ri, pi, { path: e.target.value })}
+                        placeholder="絶対パス"
+                        className={`${inputClass} flex-1`}
+                      />
+                      <button
+                        onClick={async () => {
+                          const dir = await window.api.dialog.openDirectory()
+                          if (dir) updatePane(ri, pi, { path: dir })
+                        }}
+                        className="px-2 py-1 rounded text-xs bg-gray-600 hover:bg-gray-500 text-gray-200 whitespace-nowrap"
+                      >
+                        選択
+                      </button>
+                      <button
+                        onClick={() => removePane(ri, pi)}
+                        className="px-2 py-1 rounded text-xs bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        削除
+                      </button>
+                    </div>
+
+                    {/* Dev Servers */}
+                    <div className="pl-3 border-l-2 border-gray-700">
+                      <span className="text-xs text-gray-500 block mb-1.5">Dev Servers</span>
+                      {pane.devServers.map((ds, di) => (
+                        <div key={di} className="flex items-center gap-2 mb-2">
+                          <input
+                            type="text"
+                            value={ds.label}
+                            onChange={(e) => updateDevServer(ri, pi, di, { label: e.target.value })}
+                            placeholder="Label"
+                            className={`${inputClass} flex-[3] min-w-0`}
+                          />
+                          <input
+                            type="text"
+                            value={ds.command}
+                            onChange={(e) => updateDevServer(ri, pi, di, { command: e.target.value })}
+                            placeholder="Command"
+                            className={`${inputClass} flex-[2] min-w-0`}
+                          />
+                          <ArgsInput
+                            value={ds.args}
+                            onChange={(args) => updateDevServer(ri, pi, di, { args })}
+                            placeholder="Args (space sep)"
+                            className={`${inputClass} flex-[3] min-w-0`}
+                          />
+                          <input
+                            type="number"
+                            value={ds.port ?? ''}
+                            onChange={(e) =>
+                              updateDevServer(ri, pi, di, { port: e.target.value ? Number(e.target.value) : undefined })
+                            }
+                            placeholder="Port"
+                            className={`${inputClass} flex-[2] min-w-0`}
+                          />
+                          <button
+                            onClick={() => removeDevServer(ri, pi, di)}
+                            className="px-2 py-0.5 rounded text-xs bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            x
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => addDevServer(ri, pi)}
+                        className="mt-1 px-2 py-0.5 rounded text-xs bg-gray-600 hover:bg-gray-500 text-gray-300"
+                      >
+                        + Dev Server追加
+                      </button>
+                    </div>
                   </div>
                 ))}
                 <button
-                  onClick={() => addDevServer(pi)}
-                  className="mt-1 px-2 py-0.5 rounded text-xs bg-gray-600 hover:bg-gray-500 text-gray-300"
+                  onClick={() => addPane(ri)}
+                  className="px-2 py-1 rounded text-xs bg-gray-600 hover:bg-gray-500 text-gray-300"
                 >
-                  + Dev Server追加
+                  + Pane追加
                 </button>
               </div>
             </div>
           ))}
 
           <button
-            onClick={addPane}
+            onClick={addRepo}
             className="px-3 py-1 rounded text-xs bg-blue-600 hover:bg-blue-700 text-white"
           >
-            + Pane追加
+            + リポジトリ追加
           </button>
         </section>
 
@@ -575,9 +657,11 @@ export default function SettingsPage() {
         isOpen={deleteTarget !== null}
         title="削除の確認"
         message={
-          deleteTarget?.kind === 'pane'
-            ? `Pane「${settings.panes[deleteTarget.paneIndex]?.id || ''}」を削除しますか？`
-            : `Dev Server「${settings.panes[deleteTarget?.paneIndex ?? 0]?.devServers[deleteTarget?.dsIndex ?? 0]?.label || ''}」を削除しますか？`
+          deleteTarget?.kind === 'repo'
+            ? `リポジトリ「${settings.repos[deleteTarget.repoIndex]?.name || ''}」を削除しますか？`
+            : deleteTarget?.kind === 'pane'
+            ? `Pane「${settings.repos[deleteTarget.repoIndex]?.panes[deleteTarget.paneIndex]?.id || ''}」を削除しますか？`
+            : `Dev Server「${settings.repos[deleteTarget?.repoIndex ?? 0]?.panes[deleteTarget?.paneIndex ?? 0]?.devServers[deleteTarget?.dsIndex ?? 0]?.label || ''}」を削除しますか？`
         }
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}

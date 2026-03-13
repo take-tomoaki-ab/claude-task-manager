@@ -14,9 +14,15 @@ export type PaneConfig = {
   devServers: DevServerConfig[]
 }
 
+export type RepoConfig = {
+  id: string
+  name: string
+  panes: PaneConfig[]
+}
+
 // アプリ設定
 export type AppSettings = {
-  panes: PaneConfig[]
+  repos: RepoConfig[]
   githubPat?: string  // safeStorageで暗号化して保存
   githubUsername?: string  // GitHub ユーザー名（PR自動同期用）
   githubPrSyncIntervalMin?: number  // PR同期間隔（分、デフォルト5）
