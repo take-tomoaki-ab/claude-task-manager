@@ -199,6 +199,16 @@ export default function TerminalPanel() {
         ref={panelContainerRef}
         className="flex-1 overflow-hidden"
         style={{ display: activeTaskId && !devServerLogKey ? 'block' : 'none' }}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault()
+          if (!activeTaskId) return
+          const files = Array.from(e.dataTransfer.files)
+          const paths = files.map((f) => f.path).filter(Boolean)
+          if (paths.length > 0) {
+            window.api.terminal.write(activeTaskId, paths.join(' '))
+          }
+        }}
       />
 
       {devServerLogKey && (
