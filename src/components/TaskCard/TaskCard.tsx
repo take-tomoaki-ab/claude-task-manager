@@ -114,7 +114,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
           <span className={`text-xs px-2 py-0.5 rounded text-white font-medium ${TYPE_COLORS[task.type]}`}>
             {task.type}
           </span>
-          <span className="text-sm font-medium text-white truncate">{task.title}</span>
+          <span className="text-sm font-medium text-white truncate" title={task.title}>{task.title}</span>
         </div>
 
         {/* will_do card */}
