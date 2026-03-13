@@ -102,7 +102,7 @@ export default function SettingsPage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [prSyncing, setPrSyncing] = useState(false)
   const [prSyncResult, setPrSyncResult] = useState<{ created: number; total: number } | null>(null)
-  const [importResult, setImportResult] = useState<'ok' | 'cancelled' | 'error' | null>(null)
+  const [, setImportResult] = useState<'ok' | 'cancelled' | 'error' | null>(null)
 
   useEffect(() => {
     window.api.settings.get().then(setSettings)

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import { useTerminalStore } from '../../stores/terminalStore'
 import { useTaskStore } from '../../stores/taskStore'
@@ -45,6 +46,9 @@ export default function TerminalPanel() {
     })
     const fitAddon = new FitAddon()
     terminal.loadAddon(fitAddon)
+    terminal.loadAddon(new WebLinksAddon((_, url) => {
+      window.api.shell.openExternal(url)
+    }))
 
     // per-task専用コンテナdiv（DOM要素として使い回す）
     const container = document.createElement('div')
@@ -204,7 +208,7 @@ export default function TerminalPanel() {
           e.preventDefault()
           if (!activeTaskId) return
           const files = Array.from(e.dataTransfer.files)
-          const paths = files.map((f) => f.path).filter(Boolean)
+          const paths = files.map((f) => (f as File & { path: string }).path).filter(Boolean)
           if (paths.length > 0) {
             window.api.terminal.write(activeTaskId, paths.join(' '))
           }
