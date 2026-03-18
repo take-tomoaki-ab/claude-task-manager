@@ -6,7 +6,7 @@ export class TerminalService {
   private sessions: Map<string, pty.IPty> = new Map()
   private dataListeners: Map<string, Set<TerminalDataCallback>> = new Map()
 
-  start(taskId: string, workdir: string, cols = 120, rows = 30): void {
+  start(taskId: string, workdir: string, cols = 120, rows = 30, extraEnv?: Record<string, string>): void {
     if (this.sessions.has(taskId)) {
       this.kill(taskId)
     }
@@ -14,7 +14,8 @@ export class TerminalService {
     const shell = process.env.SHELL || '/bin/bash'
     const env: Record<string, string> = {
       ...(process.env as Record<string, string>),
-      PATH: `/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH || ''}`
+      PATH: `/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH || ''}`,
+      ...extraEnv
     }
 
     const ptyProcess = pty.spawn(shell, ['-l'], {

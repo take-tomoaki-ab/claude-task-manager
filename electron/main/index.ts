@@ -9,6 +9,7 @@ import { GitService } from './services/GitService'
 import { ClaudeService } from './services/ClaudeService'
 import { DevServerService } from './services/DevServerService'
 import { GitHubService } from './services/GitHubService'
+import { StopHookService } from './services/StopHookService'
 import { PluginRegistry } from './plugins/PluginRegistry'
 import { PLUGIN_CATALOG } from './plugins/catalog'
 import { registerTaskHandlers } from './ipc/tasks'
@@ -31,6 +32,7 @@ const registry = new PluginRegistry()
 let mainWindow: BrowserWindow | null = null
 let devServerServiceInstance: DevServerService | null = null
 let terminalServiceInstance: TerminalService | null = null
+let stopHookServiceInstance: StopHookService | null = null
 let prSyncTimerId: ReturnType<typeof setInterval> | null = null
 
 function getWindow(): BrowserWindow | null {
@@ -193,6 +195,11 @@ app.whenReady().then(() => {
   const devServerService = new DevServerService()
   devServerServiceInstance = devServerService
   const gitHubService = new GitHubService()
+  const stopHookService = new StopHookService()
+  stopHookServiceInstance = stopHookService
+  stopHookService.start().catch((e) => {
+    console.error('[StopHookService] failed to start:', e)
+  })
 
   // Register IPC handlers
   registerTaskHandlers(taskService, getSettings)
@@ -204,8 +211,14 @@ app.whenReady().then(() => {
     gitService,
     terminalService,
     getWindow,
-    getSettings
+    getSettings,
+    stopHookService
   )
+
+  // Stop Hook IPC handlers
+  ipcMain.handle('hooks:status', () => stopHookService.getHookStatus())
+  ipcMain.handle('hooks:install', () => stopHookService.installHook())
+  ipcMain.handle('hooks:uninstall', () => stopHookService.uninstallHook())
   registerDevServerHandlers(devServerService, getWindow, getSettings)
   registerGitHubHandlers(gitHubService, taskService, getSettings, getWindow)
   registerTicketHandlers(registry, getSettings)
@@ -355,6 +368,7 @@ app.on('window-all-closed', () => {
   if (prSyncTimerId) clearInterval(prSyncTimerId)
   devServerServiceInstance?.stopAll()
   terminalServiceInstance?.killAll()
+  stopHookServiceInstance?.stop()
 
   if (process.platform !== 'darwin') {
     app.quit()

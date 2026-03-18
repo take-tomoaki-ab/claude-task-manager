@@ -115,6 +115,15 @@ const api = {
     catalog: () => ipcRenderer.invoke('plugin:catalog'),
     install: (id: string) => ipcRenderer.invoke('plugin:install', id),
     uninstall: (id: string) => ipcRenderer.invoke('plugin:uninstall', id)
+  },
+
+  hooks: {
+    status: (): Promise<{ installed: boolean; path: string; managedByApp: boolean }> =>
+      ipcRenderer.invoke('hooks:status'),
+    install: (): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('hooks:install'),
+    uninstall: (): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('hooks:uninstall')
   }
 }
 

@@ -19,7 +19,7 @@ export class ClaudeService {
   }
 
   start(taskId: string, workdir: string, prompt?: string, dangerously?: boolean, planMode?: boolean): void {
-    this.terminalService.start(taskId, workdir)
+    this.terminalService.start(taskId, workdir, 120, 30, { CLAUDE_TASK_ID: taskId })
     let claudeArgs = ''
     if (dangerously) claudeArgs += ' --dangerously-skip-permissions'
     if (planMode) claudeArgs += ' --permission-mode plan'

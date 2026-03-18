@@ -124,6 +124,11 @@ export type IpcChannels = {
   'plugin:catalog': [void, PluginCatalogEntry[]]
   'plugin:install': [string, void]
   'plugin:uninstall': [string, void]
+
+  // Hooks
+  'hooks:status': [void, { installed: boolean; path: string; managedByApp: boolean }]
+  'hooks:install': [void, { success: boolean; error?: string }]
+  'hooks:uninstall': [void, { success: boolean; error?: string }]
 }
 
 // window.api の型定義（preload で expose するもの）
@@ -186,5 +191,10 @@ export type WindowApi = {
     catalog: () => Promise<PluginCatalogEntry[]>
     install: (id: string) => Promise<void>
     uninstall: (id: string) => Promise<void>
+  }
+  hooks: {
+    status: () => Promise<{ installed: boolean; path: string; managedByApp: boolean }>
+    install: () => Promise<{ success: boolean; error?: string }>
+    uninstall: () => Promise<{ success: boolean; error?: string }>
   }
 }

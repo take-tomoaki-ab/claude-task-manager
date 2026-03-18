@@ -1,9 +1,10 @@
-import { ipcMain, type BrowserWindow } from 'electron'
+import { ipcMain, Notification, type BrowserWindow } from 'electron'
 import { expandPath } from '../utils/path'
 import type { ClaudeService } from '../services/ClaudeService'
 import type { TaskService } from '../services/TaskService'
 import type { GitService } from '../services/GitService'
 import type { TerminalService } from '../services/TerminalService'
+import type { StopHookService } from '../services/StopHookService'
 import type { AppSettings } from '../../../src/types/ipc'
 import type { Task } from '../../../src/types/task'
 
@@ -24,7 +25,8 @@ export function registerClaudeHandlers(
   gitService: GitService,
   terminalService: TerminalService,
   getWindow: () => BrowserWindow | null,
-  getSettings: () => AppSettings
+  getSettings: () => AppSettings,
+  stopHookService?: StopHookService
 ): void {
   ipcMain.handle(
     'claude:start',
@@ -84,6 +86,23 @@ export function registerClaudeHandlers(
           const planMode = task.type === 'research'
           const dangerously = !planMode && (settings.useDangerouslySkipPermissions ?? false)
           claudeService.start(taskId, resolvedWorkdir, taskPrompt, dangerously, planMode)
+
+          // Stop Hook: タスク完了コールバック登録
+          if (stopHookService) {
+            stopHookService.onTaskComplete(taskId, async () => {
+              const currentTask = taskService.list().find((t) => t.id === taskId)
+              if (!currentTask || currentTask.status === 'done') return
+              taskService.update(taskId, { status: 'done' })
+              const win = getWindow()
+              if (win && !win.isDestroyed()) {
+                win.webContents.send('tasks:updated')
+              }
+              const { notificationsEnabled = true } = getSettings()
+              if (notificationsEnabled) {
+                new Notification({ title: 'タスク完了', body: currentTask.title }).show()
+              }
+            })
+          }
 
           // Record PID
           const pid = terminalService.getPid(taskId)
