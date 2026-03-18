@@ -123,7 +123,7 @@ const api = {
   },
 
   hooks: {
-    status: (): Promise<{ installed: boolean; path: string; managedByApp: boolean }> =>
+    status: (): Promise<{ installed: boolean; path: string; managedByApp: boolean; registeredInSettings: boolean }> =>
       ipcRenderer.invoke('hooks:status'),
     install: (): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('hooks:install'),

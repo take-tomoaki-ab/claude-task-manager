@@ -7,6 +7,7 @@ const PORT_FILE_DIR = path.join(homedir(), '.claude-task-manager')
 const PORT_FILE = path.join(PORT_FILE_DIR, 'port')
 const HOOK_INSTALL_DIR = path.join(homedir(), '.claude', 'hooks')
 const HOOK_FILE = path.join(HOOK_INSTALL_DIR, 'stop.sh')
+const CLAUDE_SETTINGS_FILE = path.join(homedir(), '.claude', 'settings.json')
 
 const HOOK_CONTENT = `#!/bin/sh
 # Claude Task Manager - Stop Hook
@@ -21,6 +22,11 @@ curl -s -X POST "http://127.0.0.1:$PORT/task-done" \\
   -H "Content-Type: application/json" \\
   -d "{\\"taskId\\":\\"$CLAUDE_TASK_ID\\"}" || true
 `
+
+// ~/.claude/settings.json の hooks.Stop エントリ型
+type HookEntry = { type: string; command: string }
+type HookMatcher = { matcher?: string; hooks: HookEntry[] }
+type ClaudeSettings = { hooks?: { Stop?: HookMatcher[] }; [key: string]: unknown }
 
 const DEFAULT_PORT = 39457
 
@@ -91,8 +97,26 @@ export class StopHookService {
     this.callbacks.delete(taskId)
   }
 
+  // ~/.claude/settings.json を読み込む（なければ空オブジェクト）
+  private readClaudeSettings(): ClaudeSettings {
+    try {
+      const content = fs.readFileSync(CLAUDE_SETTINGS_FILE, 'utf-8')
+      return JSON.parse(content) as ClaudeSettings
+    } catch {
+      return {}
+    }
+  }
+
+  // settings.json の hooks.Stop に HOOK_FILE が登録されているか
+  private isRegisteredInSettings(settings: ClaudeSettings): boolean {
+    return (settings.hooks?.Stop ?? []).some((m) =>
+      m.hooks.some((h) => h.command === HOOK_FILE)
+    )
+  }
+
   installHook(): { success: boolean; error?: string } {
     try {
+      // stop.sh の書き込み
       if (fs.existsSync(HOOK_FILE)) {
         const existing = fs.readFileSync(HOOK_FILE, 'utf-8')
         if (!existing.includes('Claude Task Manager')) {
@@ -104,6 +128,17 @@ export class StopHookService {
       }
       fs.mkdirSync(HOOK_INSTALL_DIR, { recursive: true })
       fs.writeFileSync(HOOK_FILE, HOOK_CONTENT, { encoding: 'utf-8', mode: 0o755 })
+
+      // ~/.claude/settings.json に hooks.Stop エントリを追加
+      const settings = this.readClaudeSettings()
+      if (!this.isRegisteredInSettings(settings)) {
+        if (!settings.hooks) settings.hooks = {}
+        if (!settings.hooks.Stop) settings.hooks.Stop = []
+        settings.hooks.Stop.push({ matcher: '', hooks: [{ type: 'command', command: HOOK_FILE }] })
+        fs.mkdirSync(path.dirname(CLAUDE_SETTINGS_FILE), { recursive: true })
+        fs.writeFileSync(CLAUDE_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8')
+      }
+
       return { success: true }
     } catch (e) {
       return { success: false, error: (e as Error).message }
@@ -112,24 +147,36 @@ export class StopHookService {
 
   uninstallHook(): { success: boolean; error?: string } {
     try {
-      if (!fs.existsSync(HOOK_FILE)) {
-        return { success: true }
-      }
-      const existing = fs.readFileSync(HOOK_FILE, 'utf-8')
-      if (!existing.includes('Claude Task Manager')) {
-        return {
-          success: false,
-          error: `${HOOK_FILE} はこのアプリが管理するファイルではないため削除できません。`
+      // stop.sh の削除
+      if (fs.existsSync(HOOK_FILE)) {
+        const existing = fs.readFileSync(HOOK_FILE, 'utf-8')
+        if (!existing.includes('Claude Task Manager')) {
+          return {
+            success: false,
+            error: `${HOOK_FILE} はこのアプリが管理するファイルではないため削除できません。`
+          }
         }
+        fs.unlinkSync(HOOK_FILE)
       }
-      fs.unlinkSync(HOOK_FILE)
+
+      // ~/.claude/settings.json から hooks.Stop エントリを削除
+      const settings = this.readClaudeSettings()
+      if (settings.hooks?.Stop) {
+        settings.hooks.Stop = settings.hooks.Stop
+          .map((m) => ({ ...m, hooks: m.hooks.filter((h) => h.command !== HOOK_FILE) }))
+          .filter((m) => m.hooks.length > 0)
+        if (settings.hooks.Stop.length === 0) delete settings.hooks.Stop
+        if (Object.keys(settings.hooks).length === 0) delete settings.hooks
+        fs.writeFileSync(CLAUDE_SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8')
+      }
+
       return { success: true }
     } catch (e) {
       return { success: false, error: (e as Error).message }
     }
   }
 
-  getHookStatus(): { installed: boolean; path: string; managedByApp: boolean } {
+  getHookStatus(): { installed: boolean; path: string; managedByApp: boolean; registeredInSettings: boolean } {
     const exists = fs.existsSync(HOOK_FILE)
     let managedByApp = false
     if (exists) {
@@ -140,7 +187,9 @@ export class StopHookService {
         // ignore
       }
     }
-    return { installed: exists, path: HOOK_FILE, managedByApp }
+    const settings = this.readClaudeSettings()
+    const registeredInSettings = this.isRegisteredInSettings(settings)
+    return { installed: exists, path: HOOK_FILE, managedByApp, registeredInSettings }
   }
 
   stop(): void {

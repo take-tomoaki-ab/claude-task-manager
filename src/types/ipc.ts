@@ -127,7 +127,7 @@ export type IpcChannels = {
   'plugin:uninstall': [string, void]
 
   // Hooks
-  'hooks:status': [void, { installed: boolean; path: string; managedByApp: boolean }]
+  'hooks:status': [void, { installed: boolean; path: string; managedByApp: boolean; registeredInSettings: boolean }]
   'hooks:install': [void, { success: boolean; error?: string }]
   'hooks:uninstall': [void, { success: boolean; error?: string }]
 }
@@ -195,7 +195,7 @@ export type WindowApi = {
     uninstall: (id: string) => Promise<void>
   }
   hooks: {
-    status: () => Promise<{ installed: boolean; path: string; managedByApp: boolean }>
+    status: () => Promise<{ installed: boolean; path: string; managedByApp: boolean; registeredInSettings: boolean }>
     install: () => Promise<{ success: boolean; error?: string }>
     uninstall: () => Promise<{ success: boolean; error?: string }>
   }

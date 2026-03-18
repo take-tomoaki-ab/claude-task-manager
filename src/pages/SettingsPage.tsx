@@ -107,7 +107,7 @@ export default function SettingsPage() {
   const [prSyncing, setPrSyncing] = useState(false)
   const [prSyncResult, setPrSyncResult] = useState<{ created: number; total: number } | null>(null)
   const [, setImportResult] = useState<'ok' | 'cancelled' | 'error' | null>(null)
-  const [hookStatus, setHookStatus] = useState<{ installed: boolean; path: string; managedByApp: boolean } | null>(null)
+  const [hookStatus, setHookStatus] = useState<{ installed: boolean; path: string; managedByApp: boolean; registeredInSettings: boolean } | null>(null)
   const [hookLoading, setHookLoading] = useState(false)
 
   useEffect(() => {
@@ -476,8 +476,10 @@ export default function SettingsPage() {
               <span className="text-xs text-gray-400 w-16">状態</span>
               {hookStatus === null ? (
                 <span className="text-xs text-gray-500">確認中...</span>
-              ) : hookStatus.installed && hookStatus.managedByApp ? (
-                <span className="text-xs text-green-400">✅ インストール済み（このアプリが管理）</span>
+              ) : hookStatus.installed && hookStatus.managedByApp && hookStatus.registeredInSettings ? (
+                <span className="text-xs text-green-400">✅ インストール済み・settings.json 登録済み</span>
+              ) : hookStatus.installed && hookStatus.managedByApp && !hookStatus.registeredInSettings ? (
+                <span className="text-xs text-yellow-400">⚠️ stop.sh はあるが settings.json 未登録（再インストールしてください）</span>
               ) : hookStatus.installed ? (
                 <span className="text-xs text-yellow-400">⚠️ 別の stop.sh が存在します（このアプリが管理していません）</span>
               ) : (
@@ -487,7 +489,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2 pt-1">
               <button
                 onClick={handleHookInstall}
-                disabled={hookLoading || (hookStatus?.installed && hookStatus?.managedByApp)}
+                disabled={hookLoading || (hookStatus?.installed && hookStatus?.managedByApp && hookStatus?.registeredInSettings)}
                 className="px-4 py-1.5 rounded text-sm bg-green-700 hover:bg-green-600 text-white disabled:opacity-40"
               >
                 {hookLoading ? '処理中...' : 'インストール'}
