@@ -32,6 +32,7 @@ export type AppSettings = {
   backgroundImageDir?: string  // 背景画像ディレクトリ
   backgroundIntervalSec?: number  // スライドショー間隔（秒）
   notificationsEnabled?: boolean  // デスクトップ通知を有効にするか（デフォルト: true）
+  stopHookPort?: number  // Stop Hook HTTPサーバーのポート（デフォルト: 39457）
   pluginSettings?: Record<string, Record<string, string>>  // チケットプラグイン設定（暗号化フィールドはsafeStorage管理）
   enabledPlugins?: string[]  // 有効なプラグインIDの一覧
 }

@@ -453,6 +453,20 @@ export default function SettingsPage() {
           </p>
           <div className="bg-gray-800 rounded-lg p-4 space-y-3">
             <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 w-16">ポート番号</span>
+              <input
+                type="number"
+                min={1024}
+                max={65535}
+                value={settings.stopHookPort ?? 39457}
+                onChange={(e) =>
+                  setSettings((prev) => ({ ...prev, stopHookPort: Number(e.target.value) || 39457 }))
+                }
+                className={`${inputClass} w-28`}
+              />
+              <span className="text-xs text-gray-500">変更後は再起動が必要です</span>
+            </div>
+            <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400 w-16">インストール先</span>
               <span className="text-xs text-gray-300 font-mono">
                 {hookStatus?.path ?? '~/.claude/hooks/stop.sh'}

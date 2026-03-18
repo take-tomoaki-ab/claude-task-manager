@@ -22,12 +22,14 @@ curl -s -X POST "http://127.0.0.1:$PORT/task-done" \\
   -d "{\\"taskId\\":\\"$CLAUDE_TASK_ID\\"}" || true
 `
 
+const DEFAULT_PORT = 39457
+
 export class StopHookService {
   private server: http.Server | null = null
   private port: number = 0
   private callbacks = new Map<string, () => void>()
 
-  async start(): Promise<void> {
+  async start(port: number = DEFAULT_PORT): Promise<void> {
     return new Promise((resolve, reject) => {
       this.server = http.createServer((req, res) => {
         if (req.method === 'POST' && req.url === '/task-done') {
@@ -56,7 +58,7 @@ export class StopHookService {
         }
       })
 
-      this.server.listen(0, '127.0.0.1', () => {
+      this.server.listen(port, '127.0.0.1', () => {
         const addr = this.server?.address()
         if (!addr || typeof addr === 'string') {
           reject(new Error('Failed to get server address'))

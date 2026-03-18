@@ -197,7 +197,8 @@ app.whenReady().then(() => {
   const gitHubService = new GitHubService()
   const stopHookService = new StopHookService()
   stopHookServiceInstance = stopHookService
-  stopHookService.start().catch((e) => {
+  const initialPort = getSettings().stopHookPort ?? 39457
+  stopHookService.start(initialPort).catch((e) => {
     console.error('[StopHookService] failed to start:', e)
   })
 
