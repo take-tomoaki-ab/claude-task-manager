@@ -66,11 +66,6 @@ const api = {
       ipcRenderer.on('claude:context-update', listener)
       return () => ipcRenderer.removeListener('claude:context-update', listener)
     },
-    onTaskFinished: (callback: (taskId: string) => void): (() => void) => {
-      const listener = (_: IpcRendererEvent, { taskId }: { taskId: string }): void => callback(taskId)
-      ipcRenderer.on('claude:task-finished', listener)
-      return () => ipcRenderer.removeListener('claude:task-finished', listener)
-    }
   },
 
   devserver: {

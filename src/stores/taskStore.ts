@@ -6,8 +6,6 @@ type TaskStore = {
   filteredTasks: RuntimeTask[]
   searchQuery: string
   typeFilters: TaskType[]
-  pendingDoneTaskIds: string[]
-
   fetchTasks: () => Promise<void>
   createTask: (task: DistributiveOmit<Task, 'id' | 'created_at'>) => Promise<void>
   updateTask: (id: string, data: Partial<Task & RuntimeTaskState>) => Promise<void>
@@ -18,8 +16,6 @@ type TaskStore = {
   startTask: (taskId: string) => Promise<void>
   setSearchQuery: (q: string) => void
   setTypeFilters: (types: TaskType[]) => void
-  setPendingDone: (taskId: string) => void
-  clearPendingDone: (taskId: string) => void
 }
 
 function applyFilters(tasks: RuntimeTask[], searchQuery: string, typeFilters: TaskType[]): RuntimeTask[] {
@@ -45,7 +41,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   filteredTasks: [],
   searchQuery: '',
   typeFilters: [],
-  pendingDoneTaskIds: [],
 
   fetchTasks: async () => {
     const tasks = await window.api.tasks.list()
@@ -103,17 +98,5 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   setTypeFilters: (types) => {
     const { tasks, searchQuery } = get()
     set({ typeFilters: types, filteredTasks: applyFilters(tasks, searchQuery, types) })
-  },
-
-  setPendingDone: (taskId) => {
-    set((s) => ({
-      pendingDoneTaskIds: s.pendingDoneTaskIds.includes(taskId)
-        ? s.pendingDoneTaskIds
-        : [...s.pendingDoneTaskIds, taskId]
-    }))
-  },
-
-  clearPendingDone: (taskId) => {
-    set((s) => ({ pendingDoneTaskIds: s.pendingDoneTaskIds.filter((id) => id !== taskId) }))
   }
 }))

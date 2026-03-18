@@ -92,17 +92,22 @@ export function registerClaudeHandlers(
             stopHookService.onTaskComplete(taskId, async () => {
               const currentTask = taskService.list().find((t) => t.id === taskId)
               if (!currentTask || currentTask.status === 'done') return
-              const win = getWindow()
-              if (win && !win.isDestroyed()) {
-                win.webContents.send('claude:task-finished', { taskId })
-              }
               const { notificationsEnabled = true } = getSettings()
-              if (notificationsEnabled) {
-                new Notification({
-                  title: 'Claude が完了しました',
-                  body: `「${currentTask.title}」を確認して承認してください`
-                }).show()
-              }
+              if (!notificationsEnabled) return
+
+              const notification = new Notification({
+                title: 'Claude が完了しました',
+                body: `「${currentTask.title}」`,
+                actions: [{ type: 'button', text: '承認して完了' }]
+              })
+              notification.on('action', (_, index) => {
+                if (index !== 0) return
+                const t = taskService.list().find((t) => t.id === taskId)
+                if (!t || t.status === 'done') return
+                taskService.update(taskId, { status: 'done', completedAt: new Date().toISOString() })
+                getWindow()?.webContents.send('tasks:updated')
+              })
+              notification.show()
             })
           }
 

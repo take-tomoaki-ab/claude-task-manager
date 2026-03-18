@@ -63,11 +63,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
   const startTask = useTaskStore((s) => s.startTask)
   const updateTask = useTaskStore((s) => s.updateTask)
   const archiveTask = useTaskStore((s) => s.archiveTask)
-  const pendingDoneTaskIds = useTaskStore((s) => s.pendingDoneTaskIds)
-  const clearPendingDone = useTaskStore((s) => s.clearPendingDone)
   const openTerminal = useTerminalStore((s) => s.openTerminal)
-
-  const isPendingDone = pendingDoneTaskIds.includes(task.id)
 
   const activeTaskId = useTerminalStore((s) => s.activeTaskId)
   const isTerminalOpen = useTerminalStore((s) => s.isOpen)
@@ -89,7 +85,6 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
   }
 
   const handleComplete = async () => {
-    clearPendingDone(task.id)
     await updateTask(task.id, { status: 'done', completedAt: new Date().toISOString() })
     const { activeTaskId, closeTerminal } = useTerminalStore.getState()
     if (activeTaskId === task.id) closeTerminal()
@@ -202,25 +197,6 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
         {/* doing card */}
         {task.status === 'doing' && (
           <div className="space-y-2">
-            {isPendingDone && (
-              <div className="flex items-center justify-between bg-green-900/60 border border-green-600/50 rounded px-3 py-2">
-                <span className="text-xs text-green-300">Claude が完了しました。承認しますか？</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleComplete}
-                    className="px-2 py-0.5 rounded text-xs bg-green-600 hover:bg-green-500 text-white font-medium"
-                  >
-                    承認
-                  </button>
-                  <button
-                    onClick={() => clearPendingDone(task.id)}
-                    className="px-2 py-0.5 rounded text-xs bg-gray-600 hover:bg-gray-500 text-gray-300"
-                  >
-                    無視
-                  </button>
-                </div>
-              </div>
-            )}
             <div className="text-xs text-gray-400">
               Pane: <span className="text-gray-300 font-mono">{task.pane}</span>
               {task.workdir && (
