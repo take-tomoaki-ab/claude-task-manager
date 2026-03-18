@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const filteredTasks = useTaskStore((s) => s.filteredTasks)
   const tasks = useTaskStore((s) => s.tasks)
   const archiveAllDone = useTaskStore((s) => s.archiveAllDone)
+  const setPendingDone = useTaskStore((s) => s.setPendingDone)
   const isTerminalOpen = useTerminalStore((s) => s.isOpen)
 
   useEffect(() => {
@@ -35,6 +36,12 @@ export default function DashboardPage() {
       fetchTasks()
     })
   }, [fetchTasks])
+
+  useEffect(() => {
+    return window.api.claude.onTaskFinished((taskId) => {
+      setPendingDone(taskId)
+    })
+  }, [setPendingDone])
 
   // タスクごとに、そのリポジトリに空きペインがあるか判定
   const occupiedPaneIds = new Set(

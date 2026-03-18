@@ -87,19 +87,21 @@ export function registerClaudeHandlers(
           const dangerously = !planMode && (settings.useDangerouslySkipPermissions ?? false)
           claudeService.start(taskId, resolvedWorkdir, taskPrompt, dangerously, planMode)
 
-          // Stop Hook: タスク完了コールバック登録
+          // Stop Hook: タスク完了通知コールバック登録（自動遷移しない）
           if (stopHookService) {
             stopHookService.onTaskComplete(taskId, async () => {
               const currentTask = taskService.list().find((t) => t.id === taskId)
               if (!currentTask || currentTask.status === 'done') return
-              taskService.update(taskId, { status: 'done' })
               const win = getWindow()
               if (win && !win.isDestroyed()) {
-                win.webContents.send('tasks:updated')
+                win.webContents.send('claude:task-finished', { taskId })
               }
               const { notificationsEnabled = true } = getSettings()
               if (notificationsEnabled) {
-                new Notification({ title: 'タスク完了', body: currentTask.title }).show()
+                new Notification({
+                  title: 'Claude が完了しました',
+                  body: `「${currentTask.title}」を確認して承認してください`
+                }).show()
               }
             })
           }

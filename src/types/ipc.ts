@@ -161,6 +161,7 @@ export type WindowApi = {
   claude: {
     start: (taskId: string, workdir: string, prompt?: string) => Promise<void>
     onContextUpdate: (callback: (info: ContextInfo) => void) => () => void
+    onTaskFinished: (callback: (taskId: string) => void) => () => void
   }
   devserver: {
     start: (paneId: string, label: string) => Promise<void>
