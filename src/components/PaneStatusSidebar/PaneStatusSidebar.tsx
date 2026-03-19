@@ -51,8 +51,8 @@ export default function PaneStatusSidebar() {
     }
   }
 
-  const getActiveTask = (paneId: string) => {
-    return tasks.find((t) => t.pane === paneId && t.status === 'doing')
+  const getActiveTask = (paneId: string, repoId: string) => {
+    return tasks.find((t) => t.pane === paneId && t.repoId === repoId && t.status === 'doing')
   }
 
   const shortenPath = (p: string): string => {
@@ -68,7 +68,7 @@ export default function PaneStatusSidebar() {
       (ds) => getServerStatus(pane.id, ds.label)?.running,
     )
     const serversToShow = isCollapsed ? runningServers : pane.devServers
-    const activeTask = getActiveTask(pane.id)
+    const activeTask = getActiveTask(pane.id, repoId)
     const isActive = !!activeTask
     return (
       <div key={pane.id} className={`border-b border-gray-800 ${isActive ? 'bg-blue-950/30' : ''}`}>
