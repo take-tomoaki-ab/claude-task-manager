@@ -79,6 +79,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
     setStartError(null)
     try {
       await startTask(task.id)
+      openTerminal(task.id)
     } catch (err) {
       setStartError((err as Error).message)
     }
