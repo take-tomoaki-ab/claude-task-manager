@@ -365,12 +365,14 @@ app.whenReady().then(() => {
   })
 })
 
-app.on('window-all-closed', () => {
+app.on('will-quit', () => {
   if (prSyncTimerId) clearInterval(prSyncTimerId)
   devServerServiceInstance?.stopAll()
   terminalServiceInstance?.killAll()
   stopHookServiceInstance?.stop()
+})
 
+app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }

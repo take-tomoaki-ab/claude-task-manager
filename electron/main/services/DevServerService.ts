@@ -137,27 +137,17 @@ export class DevServerService {
   }
 
   stopAll(): void {
-    for (const [, child] of this.processes) {
+    for (const [k, child] of this.processes) {
       if (child.pid != null) {
         try {
-          process.kill(-child.pid, 'SIGTERM')
+          // アプリ終了時なので SIGKILL で確実に終了させる
+          process.kill(-child.pid, 'SIGKILL')
         } catch {
           // already dead
         }
       }
+      this.processes.delete(k)
     }
-    setTimeout(() => {
-      for (const [k, child] of this.processes) {
-        if (child.pid != null) {
-          try {
-            process.kill(-child.pid, 'SIGKILL')
-          } catch {
-            // already dead
-          }
-        }
-        this.processes.delete(k)
-      }
-    }, 3000)
   }
 
   private notifyChange(): void {
