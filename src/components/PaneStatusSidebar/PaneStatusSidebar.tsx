@@ -26,7 +26,11 @@ export default function PaneStatusSidebar() {
   useEffect(() => {
     const load = async () => {
       const settings = await window.api.settings.get()
-      setRepos(settings.repos ?? [])
+      const loadedRepos = settings.repos ?? []
+      setRepos(loadedRepos)
+      setCollapsedPanes(
+        new Set(loadedRepos.flatMap((repo) => repo.panes.map((pane) => `${repo.id}:${pane.id}`))),
+      )
       const statuses = await window.api.devserver.status()
       setServerStatuses(statuses)
     }
