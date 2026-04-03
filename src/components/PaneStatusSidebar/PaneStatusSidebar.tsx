@@ -42,16 +42,16 @@ export default function PaneStatusSidebar() {
     return unsub
   }, [])
 
-  const getServerStatus = (paneId: string, label: string): DevServerStatus | undefined => {
-    return serverStatuses.find((s) => s.paneId === paneId && s.label === label)
+  const getServerStatus = (repoId: string, paneId: string, label: string): DevServerStatus | undefined => {
+    return serverStatuses.find((s) => s.repoId === repoId && s.paneId === paneId && s.label === label)
   }
 
-  const toggleServer = async (paneId: string, label: string) => {
-    const status = getServerStatus(paneId, label)
+  const toggleServer = async (repoId: string, paneId: string, label: string) => {
+    const status = getServerStatus(repoId, paneId, label)
     if (status?.running) {
-      await window.api.devserver.stop(paneId, label)
+      await window.api.devserver.stop(repoId, paneId, label)
     } else {
-      await window.api.devserver.start(paneId, label)
+      await window.api.devserver.start(repoId, paneId, label)
     }
   }
 
@@ -69,7 +69,7 @@ export default function PaneStatusSidebar() {
     const collapseKey = `${repoId}:${pane.id}`
     const isCollapsed = collapsedPanes.has(collapseKey)
     const runningServers = pane.devServers.filter(
-      (ds) => getServerStatus(pane.id, ds.label)?.running,
+      (ds) => getServerStatus(repoId, pane.id, ds.label)?.running,
     )
     const serversToShow = isCollapsed ? runningServers : pane.devServers
     const activeTask = getActiveTask(pane.id, repoId)
@@ -116,7 +116,7 @@ export default function PaneStatusSidebar() {
         {serversToShow.length > 0 && (
           <div className="px-3 pb-2">
             {serversToShow.map((ds) => {
-              const status = getServerStatus(pane.id, ds.label)
+              const status = getServerStatus(repoId, pane.id, ds.label)
               const running = status?.running ?? false
               return (
                 <div
@@ -125,7 +125,7 @@ export default function PaneStatusSidebar() {
                 >
                   <button
                     className="flex items-center gap-1.5 flex-1 cursor-pointer text-left"
-                    onClick={() => toggleServer(pane.id, ds.label)}
+                    onClick={() => toggleServer(repoId, pane.id, ds.label)}
                     title={status?.port ? `Port: ${status.port} — クリックで${running ? '停止' : '起動'}` : `クリックで${running ? '停止' : '起動'}`}
                   >
                     <span className={running ? 'text-green-400' : 'text-gray-500'}>
@@ -148,7 +148,7 @@ export default function PaneStatusSidebar() {
                   )}
                   <button
                     className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gray-200 px-1 transition-opacity"
-                    onClick={() => openDevServerLog(pane.id, ds.label)}
+                    onClick={() => openDevServerLog(repoId, pane.id, ds.label)}
                     title="ログを開く"
                   >
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">

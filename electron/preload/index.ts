@@ -69,10 +69,10 @@ const api = {
   },
 
   devserver: {
-    start: (paneId: string, label: string): Promise<void> =>
-      ipcRenderer.invoke('devserver:start', { paneId, label }),
-    stop: (paneId: string, label: string): Promise<void> =>
-      ipcRenderer.invoke('devserver:stop', { paneId, label }),
+    start: (repoId: string, paneId: string, label: string): Promise<void> =>
+      ipcRenderer.invoke('devserver:start', { repoId, paneId, label }),
+    stop: (repoId: string, paneId: string, label: string): Promise<void> =>
+      ipcRenderer.invoke('devserver:stop', { repoId, paneId, label }),
     status: (): Promise<DevServerStatus[]> => ipcRenderer.invoke('devserver:status'),
     onStatusChange: (callback: (statuses: DevServerStatus[]) => void): (() => void) => {
       const listener = (_: IpcRendererEvent, statuses: DevServerStatus[]): void =>
@@ -80,8 +80,8 @@ const api = {
       ipcRenderer.on('devserver:status-change', listener)
       return () => ipcRenderer.removeListener('devserver:status-change', listener)
     },
-    getLog: (paneId: string, label: string): Promise<string> =>
-      ipcRenderer.invoke('devserver:log', { paneId, label })
+    getLog: (repoId: string, paneId: string, label: string): Promise<string> =>
+      ipcRenderer.invoke('devserver:log', { repoId, paneId, label })
   },
 
   settings: {

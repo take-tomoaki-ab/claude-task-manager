@@ -8,23 +8,23 @@ export type DevServerChangeCallback = (statuses: DevServerStatus[]) => void
 export class DevServerService {
   private processes: Map<string, ChildProcess> = new Map()
   private logs: Map<string, string> = new Map()
-  private configs: Map<string, { paneConfig: PaneConfig; serverConfig: DevServerConfig }> =
+  private configs: Map<string, { repoId: string; paneConfig: PaneConfig; serverConfig: DevServerConfig }> =
     new Map()
   private changeCallbacks: Set<DevServerChangeCallback> = new Set()
 
-  private key(paneId: string, label: string): string {
-    return `${paneId}:${label}`
+  private key(repoId: string, paneId: string, label: string): string {
+    return `${repoId}:${paneId}:${label}`
   }
 
-  start(paneConfig: PaneConfig, serverConfig: DevServerConfig): void {
-    const k = this.key(paneConfig.id, serverConfig.label)
+  start(repoId: string, paneConfig: PaneConfig, serverConfig: DevServerConfig): void {
+    const k = this.key(repoId, paneConfig.id, serverConfig.label)
 
     if (this.processes.has(k)) {
-      this.stop(paneConfig.id, serverConfig.label)
+      this.stop(repoId, paneConfig.id, serverConfig.label)
     }
 
     const resolvedPath = expandPath(paneConfig.path)
-    this.configs.set(k, { paneConfig, serverConfig })
+    this.configs.set(k, { repoId, paneConfig, serverConfig })
     this.logs.set(k, '')
 
     if (!existsSync(resolvedPath)) {
@@ -80,8 +80,8 @@ export class DevServerService {
     this.notifyChange()
   }
 
-  stop(paneId: string, label: string): void {
-    const k = this.key(paneId, label)
+  stop(repoId: string, paneId: string, label: string): void {
+    const k = this.key(repoId, paneId, label)
     const child = this.processes.get(k)
     if (!child || child.pid == null) return
 
@@ -114,6 +114,7 @@ export class DevServerService {
     for (const [k, config] of this.configs) {
       const child = this.processes.get(k)
       statuses.push({
+        repoId: config.repoId,
         paneId: config.paneConfig.id,
         label: config.serverConfig.label,
         running: !!child,
@@ -125,8 +126,8 @@ export class DevServerService {
     return statuses
   }
 
-  getLog(paneId: string, label: string): string {
-    return this.logs.get(this.key(paneId, label)) || ''
+  getLog(repoId: string, paneId: string, label: string): string {
+    return this.logs.get(this.key(repoId, paneId, label)) || ''
   }
 
   onStatusChange(callback: DevServerChangeCallback): () => void {

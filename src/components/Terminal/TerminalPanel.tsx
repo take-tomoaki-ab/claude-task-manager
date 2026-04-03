@@ -225,9 +225,10 @@ export default function TerminalPanel() {
 }
 
 function DevServerLogView({ logKey }: { logKey: string }) {
-  const colonIdx = logKey.indexOf(':')
-  const paneId = logKey.slice(0, colonIdx)
-  const label = logKey.slice(colonIdx + 1)
+  const parts = logKey.split(':')
+  const repoId = parts[0]
+  const paneId = parts[1]
+  const label = parts.slice(2).join(':')
   const [log, setLog] = useState('')
   const bottomRef = useRef<HTMLPreElement>(null)
 
@@ -236,7 +237,7 @@ function DevServerLogView({ logKey }: { logKey: string }) {
 
     const poll = async () => {
       try {
-        const text = await window.api.devserver.getLog(paneId, label)
+        const text = await window.api.devserver.getLog(repoId, paneId, label)
         if (!cancelled) setLog(text)
       } catch {
         // ignore
@@ -249,7 +250,7 @@ function DevServerLogView({ logKey }: { logKey: string }) {
       cancelled = true
       clearInterval(id)
     }
-  }, [paneId, label])
+  }, [repoId, paneId, label])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

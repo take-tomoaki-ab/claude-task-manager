@@ -16,12 +16,16 @@ export function registerDevServerHandlers(
 
   ipcMain.handle(
     'devserver:start',
-    async (_, { paneId, label }: { paneId: string; label: string }) => {
+    async (_, { repoId, paneId, label }: { repoId: string; paneId: string; label: string }) => {
       try {
         const settings = getSettings()
-        const paneConfig = settings.repos.flatMap((r) => r.panes).find((p) => p.id === paneId)
+        const repo = settings.repos.find((r) => r.id === repoId)
+        if (!repo) {
+          throw new Error(`Repo not found: ${repoId}`)
+        }
+        const paneConfig = repo.panes.find((p) => p.id === paneId)
         if (!paneConfig) {
-          throw new Error(`Pane not found: ${paneId}`)
+          throw new Error(`Pane not found: ${paneId} in repo ${repoId}`)
         }
 
         const serverConfig = paneConfig.devServers.find((s) => s.label === label)
@@ -29,7 +33,7 @@ export function registerDevServerHandlers(
           throw new Error(`Dev server not found: ${label} in pane ${paneId}`)
         }
 
-        devServerService.start(paneConfig, serverConfig)
+        devServerService.start(repoId, paneConfig, serverConfig)
       } catch (error) {
         throw new Error(`Failed to start dev server: ${(error as Error).message}`)
       }
@@ -38,9 +42,9 @@ export function registerDevServerHandlers(
 
   ipcMain.handle(
     'devserver:stop',
-    async (_, { paneId, label }: { paneId: string; label: string }) => {
+    async (_, { repoId, paneId, label }: { repoId: string; paneId: string; label: string }) => {
       try {
-        devServerService.stop(paneId, label)
+        devServerService.stop(repoId, paneId, label)
       } catch (error) {
         throw new Error(`Failed to stop dev server: ${(error as Error).message}`)
       }
@@ -53,8 +57,8 @@ export function registerDevServerHandlers(
 
   ipcMain.handle(
     'devserver:log',
-    async (_, { paneId, label }: { paneId: string; label: string }) => {
-      return devServerService.getLog(paneId, label)
+    async (_, { repoId, paneId, label }: { repoId: string; paneId: string; label: string }) => {
+      return devServerService.getLog(repoId, paneId, label)
     }
   )
 }

@@ -6,7 +6,7 @@ type TerminalStore = {
   devServerLogKey: string | null
 
   openTerminal: (taskId: string) => void
-  openDevServerLog: (paneId: string, label: string) => void
+  openDevServerLog: (repoId: string, paneId: string, label: string) => void
   closeTerminal: () => void
 }
 
@@ -18,8 +18,8 @@ export const useTerminalStore = create<TerminalStore>((set) => ({
   openTerminal: (taskId) =>
     set({ activeTaskId: taskId, isOpen: true, devServerLogKey: null }),
 
-  openDevServerLog: (paneId, label) =>
-    set({ devServerLogKey: `${paneId}:${label}`, isOpen: true, activeTaskId: null }),
+  openDevServerLog: (repoId, paneId, label) =>
+    set({ devServerLogKey: `${repoId}:${paneId}:${label}`, isOpen: true, activeTaskId: null }),
 
   closeTerminal: () =>
     // activeTaskId は保持する（再度開いたとき同じセッションを再表示するため）

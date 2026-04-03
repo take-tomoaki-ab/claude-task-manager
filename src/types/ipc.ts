@@ -48,6 +48,7 @@ export type GitStatusResult = {
 
 // Dev server status
 export type DevServerStatus = {
+  repoId: string
   paneId: string
   label: string
   running: boolean
@@ -96,10 +97,10 @@ export type IpcChannels = {
   'claude:start': [{ taskId: string; workdir: string; prompt?: string }, void]
 
   // Dev Server
-  'devserver:start': [{ paneId: string; label: string }, void]
-  'devserver:stop': [{ paneId: string; label: string }, void]
+  'devserver:start': [{ repoId: string; paneId: string; label: string }, void]
+  'devserver:stop': [{ repoId: string; paneId: string; label: string }, void]
   'devserver:status': [void, DevServerStatus[]]
-  'devserver:log': [{ paneId: string; label: string }, string]
+  'devserver:log': [{ repoId: string; paneId: string; label: string }, string]
 
   // Settings
   'settings:get': [void, AppSettings]
@@ -164,11 +165,11 @@ export type WindowApi = {
     onContextUpdate: (callback: (info: ContextInfo) => void) => () => void
   }
   devserver: {
-    start: (paneId: string, label: string) => Promise<void>
-    stop: (paneId: string, label: string) => Promise<void>
+    start: (repoId: string, paneId: string, label: string) => Promise<void>
+    stop: (repoId: string, paneId: string, label: string) => Promise<void>
     status: () => Promise<DevServerStatus[]>
     onStatusChange: (callback: (statuses: DevServerStatus[]) => void) => () => void
-    getLog: (paneId: string, label: string) => Promise<string>
+    getLog: (repoId: string, paneId: string, label: string) => Promise<string>
   }
   settings: {
     get: () => Promise<AppSettings>
