@@ -38,9 +38,10 @@ export class DevServerService {
     // 使わず、PATHを明示的に補強して -c でコマンドを実行する。
     const userShell = process.env.SHELL || '/bin/bash'
     const cmdString = [serverConfig.command, ...serverConfig.args].join(' ')
+    const home = process.env.HOME || ''
     const env = {
       ...process.env,
-      PATH: `/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH || ''}`,
+      PATH: `${home}/.bun/bin:${home}/.volta/bin:${home}/.nvm/versions/node/current/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH || ''}`,
       NODE_ENV: 'development'
     }
 
