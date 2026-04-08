@@ -37,8 +37,9 @@ export default function DashboardPage() {
   }, [fetchTasks])
 
   // タスクごとに、そのリポジトリに空きペインがあるか判定
-  const occupiedPaneIds = new Set(
-    tasks.filter((t) => t.status === 'doing' && t.pane).map((t) => t.pane)
+  // repoId:paneId の複合キーで管理して別リポジトリの同名paneを区別する
+  const occupiedPaneKeys = new Set(
+    tasks.filter((t) => t.status === 'doing' && t.pane).map((t) => `${t.repoId ?? ''}:${t.pane}`)
   )
   const hasFreePaneForTask = (task: RuntimeTask): boolean => {
     if (task.type === 'chore') return true
@@ -46,7 +47,7 @@ export default function DashboardPage() {
       ? repos.find((r) => r.id === task.repoId)
       : repos[0]
     if (!repo) return false
-    return repo.panes.some((p) => !occupiedPaneIds.has(p.id))
+    return repo.panes.some((p) => !occupiedPaneKeys.has(`${repo.id}:${p.id}`))
   }
 
   return (
