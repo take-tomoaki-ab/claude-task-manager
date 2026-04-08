@@ -20,6 +20,7 @@ export default function TerminalPanel() {
   const activeTaskId = useTerminalStore((s) => s.activeTaskId)
   const devServerLogKey = useTerminalStore((s) => s.devServerLogKey)
   const closeTerminal = useTerminalStore((s) => s.closeTerminal)
+  const setPanelDimensions = useTerminalStore((s) => s.setPanelDimensions)
 
   const tasks = useTaskStore((s) => s.tasks)
   const activeTask = activeTaskId ? tasks.find((t) => t.id === activeTaskId) : null
@@ -93,6 +94,7 @@ export default function TerminalPanel() {
         entry.fitAddon.fit()
         entry.terminal.scrollToBottom()
         window.api.terminal.resize(activeTaskId, entry.terminal.cols, entry.terminal.rows)
+        setPanelDimensions(entry.terminal.cols, entry.terminal.rows)
         entry.terminal.focus()
       } catch {
         // ignore fit errors
@@ -159,6 +161,7 @@ export default function TerminalPanel() {
           try {
             entry.fitAddon.fit()
             window.api.terminal.resize(activeTaskId, entry.terminal.cols, entry.terminal.rows)
+            useTerminalStore.getState().setPanelDimensions(entry.terminal.cols, entry.terminal.rows)
           } catch {
             // ignore
           }

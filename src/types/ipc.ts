@@ -94,7 +94,7 @@ export type IpcChannels = {
   'git:branches': [string, string[]]
 
   // Claude
-  'claude:start': [{ taskId: string; workdir: string; prompt?: string }, void]
+  'claude:start': [{ taskId: string; workdir: string; prompt?: string; cols?: number; rows?: number }, void]
 
   // Dev Server
   'devserver:start': [{ repoId: string; paneId: string; label: string }, void]
@@ -162,7 +162,7 @@ export type WindowApi = {
     branches: (workdir: string) => Promise<string[]>
   }
   claude: {
-    start: (taskId: string, workdir: string, prompt?: string) => Promise<void>
+    start: (taskId: string, workdir: string, prompt?: string, cols?: number, rows?: number) => Promise<void>
     onContextUpdate: (callback: (info: ContextInfo) => void) => () => void
   }
   devserver: {

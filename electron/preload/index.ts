@@ -64,8 +64,8 @@ const api = {
   },
 
   claude: {
-    start: (taskId: string, workdir: string, prompt?: string): Promise<void> =>
-      ipcRenderer.invoke('claude:start', { taskId, workdir, prompt }),
+    start: (taskId: string, workdir: string, prompt?: string, cols?: number, rows?: number): Promise<void> =>
+      ipcRenderer.invoke('claude:start', { taskId, workdir, prompt, cols, rows }),
     onContextUpdate: (callback: (info: ContextInfo) => void): (() => void) => {
       const listener = (_: IpcRendererEvent, info: ContextInfo): void => callback(info)
       ipcRenderer.on('claude:context-update', listener)

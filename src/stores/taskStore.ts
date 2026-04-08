@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { RuntimeTask, TaskType, Task, RuntimeTaskState, DistributiveOmit } from '../types/task'
+import { useTerminalStore } from './terminalStore'
 
 type TaskStore = {
   tasks: RuntimeTask[]
@@ -85,8 +86,9 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
     const workdir = task.workdir || ''
     const prompt = task.prompt
+    const { panelCols, panelRows } = useTerminalStore.getState()
 
-    await window.api.claude.start(taskId, workdir, prompt)
+    await window.api.claude.start(taskId, workdir, prompt, panelCols, panelRows)
     await get().fetchTasks()
   },
 

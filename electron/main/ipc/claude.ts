@@ -32,7 +32,7 @@ export function registerClaudeHandlers(
     'claude:start',
     async (
       _,
-      { taskId, workdir, prompt }: { taskId: string; workdir: string; prompt?: string }
+      { taskId, workdir, prompt, cols, rows }: { taskId: string; workdir: string; prompt?: string; cols?: number; rows?: number }
     ) => {
       try {
         const tasks = taskService.list()
@@ -88,7 +88,7 @@ export function registerClaudeHandlers(
           const taskPrompt = rawPrompt ? interpolateTemplate(rawPrompt, task) : undefined
           const planMode = task.type === 'research'
           const dangerously = !planMode && (settings.useDangerouslySkipPermissions ?? false)
-          claudeService.start(taskId, resolvedWorkdir, taskPrompt, dangerously, planMode)
+          claudeService.start(taskId, resolvedWorkdir, taskPrompt, dangerously, planMode, cols, rows)
 
           // Stop Hook: タスク完了通知コールバック登録（自動遷移しない）
           if (stopHookService) {
