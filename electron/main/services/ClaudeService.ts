@@ -28,7 +28,9 @@ export class ClaudeService {
 
     if (prompt) {
       setTimeout(() => {
-        this.terminalService.write(taskId, prompt + '\n')
+        if (this.terminalService.hasSession(taskId)) {
+          this.terminalService.write(taskId, prompt + '\n')
+        }
       }, 2000)
     }
 

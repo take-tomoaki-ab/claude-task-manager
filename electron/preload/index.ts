@@ -48,6 +48,11 @@ const api = {
     },
     offData: (_taskId: string): void => {
       // Individual task cleanup is handled by the unsubscribe returned from onData
+    },
+    onReset: (callback: (taskId: string) => void): (() => void) => {
+      const listener = (_: IpcRendererEvent, taskId: string): void => callback(taskId)
+      ipcRenderer.on('terminal:reset', listener)
+      return () => ipcRenderer.removeListener('terminal:reset', listener)
     }
   },
 

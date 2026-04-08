@@ -137,6 +137,17 @@ export default function TerminalPanel() {
     return unsub
   }, [])
 
+  // タスク再起動時のターミナルリセット
+  useEffect(() => {
+    const unsub = window.api.terminal.onReset((taskId) => {
+      const entry = terminalsRef.current.get(taskId)
+      if (entry) {
+        entry.terminal.reset()
+      }
+    })
+    return unsub
+  }, [])
+
   // ResizeObserver
   useEffect(() => {
     if (!panelContainerRef.current) return

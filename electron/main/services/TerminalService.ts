@@ -42,6 +42,10 @@ export class TerminalService {
     })
   }
 
+  hasSession(taskId: string): boolean {
+    return this.sessions.has(taskId)
+  }
+
   write(taskId: string, data: string): void {
     const session = this.sessions.get(taskId)
     if (!session) {

@@ -80,6 +80,9 @@ export function registerClaudeHandlers(
         taskService.update(taskId, { status: 'doing', pane: assignedPane })
 
         try {
+          // ターミナルリセットを先にレンダラーへ通知（古い表示を消す）
+          getWindow()?.webContents.send('terminal:reset', taskId)
+
           // Start Claude
           const rawPrompt = prompt || task.prompt || settings.promptTemplates?.[task.type]
           const taskPrompt = rawPrompt ? interpolateTemplate(rawPrompt, task) : undefined

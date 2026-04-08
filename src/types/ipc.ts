@@ -155,6 +155,7 @@ export type WindowApi = {
     resize: (taskId: string, cols: number, rows: number) => Promise<void>
     onData: (callback: (event: TerminalDataEvent) => void) => () => void
     offData: (taskId: string) => void
+    onReset: (callback: (taskId: string) => void) => () => void
   }
   git: {
     status: (workdir: string) => Promise<GitStatusResult>
