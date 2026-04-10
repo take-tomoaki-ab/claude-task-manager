@@ -176,6 +176,38 @@ export default function TerminalPanel() {
     }
   }, [activeTaskId, isOpen])
 
+  // スリープ復帰・ウィンドウフォーカス復帰時に再描画
+  useEffect(() => {
+    const refresh = () => {
+      const { activeTaskId: tid, isOpen: open } = useTerminalStore.getState()
+      if (!tid || !open) return
+      const entry = terminalsRef.current.get(tid)
+      if (!entry) return
+      requestAnimationFrame(() => {
+        try {
+          entry.fitAddon.fit()
+          entry.terminal.refresh(0, entry.terminal.rows - 1)
+          entry.terminal.scrollToBottom()
+          window.api.terminal.resize(tid, entry.terminal.cols, entry.terminal.rows)
+        } catch {
+          // ignore
+        }
+      })
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('focus', refresh)
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [])
+
   // アンマウント時のみdispose（パネルを閉じただけではdisposeしない）
   useEffect(() => {
     return () => {
