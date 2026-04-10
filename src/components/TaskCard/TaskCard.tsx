@@ -61,6 +61,7 @@ function DoneDetail({ task }: { task: RuntimeTask }) {
 export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
   const tasks = useTaskStore((s) => s.tasks)
   const startTask = useTaskStore((s) => s.startTask)
+  const resumeTask = useTaskStore((s) => s.resumeTask)
   const updateTask = useTaskStore((s) => s.updateTask)
   const archiveTask = useTaskStore((s) => s.archiveTask)
   const openTerminal = useTerminalStore((s) => s.openTerminal)
@@ -97,6 +98,16 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
 
   const handleRevert = async () => {
     await updateTask(task.id, { status: 'will_do', completedAt: null, startedAt: null })
+  }
+
+  const handleResume = async () => {
+    setStartError(null)
+    try {
+      await resumeTask(task.id)
+      openTerminal(task.id)
+    } catch (err) {
+      setStartError((err as Error).message)
+    }
   }
 
   const openLink = (url: string) => {
@@ -283,6 +294,15 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                   className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                 >
                   チケット
+                </button>
+              )}
+              {'sessionId' in task && task.sessionId && (
+                <button
+                  onClick={handleResume}
+                  disabled={paneBlocked}
+                  className="px-3 py-1 rounded text-xs bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  再開
                 </button>
               )}
               <button

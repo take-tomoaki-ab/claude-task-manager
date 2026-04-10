@@ -1,4 +1,5 @@
 import { ipcMain, Notification, type BrowserWindow } from 'electron'
+import { randomUUID } from 'crypto'
 import { expandPath } from '../utils/path'
 import type { ClaudeService } from '../services/ClaudeService'
 import type { TaskService } from '../services/TaskService'
@@ -88,7 +89,9 @@ export function registerClaudeHandlers(
           const taskPrompt = rawPrompt ? interpolateTemplate(rawPrompt, task) : undefined
           const planMode = task.type === 'research'
           const dangerously = !planMode && (settings.useDangerouslySkipPermissions ?? false)
-          claudeService.start(taskId, resolvedWorkdir, taskPrompt, dangerously, planMode, cols, rows)
+          const sessionId = randomUUID()
+          claudeService.start(taskId, resolvedWorkdir, taskPrompt, dangerously, planMode, cols, rows, sessionId)
+          taskService.update(taskId, { sessionId })
 
           // Stop Hook: タスク完了通知コールバック登録（自動遷移しない）
           if (stopHookService) {
@@ -148,6 +151,122 @@ export function registerClaudeHandlers(
         }
       } catch (error) {
         throw new Error(`Failed to start Claude: ${(error as Error).message}`)
+      }
+    }
+  )
+
+  ipcMain.handle(
+    'claude:resume',
+    async (
+      _,
+      { taskId, cols, rows }: { taskId: string; cols?: number; rows?: number }
+    ) => {
+      try {
+        const tasks = taskService.list()
+        const task = tasks.find((t) => t.id === taskId)
+        if (!task) {
+          throw new Error(`Task not found: ${taskId}`)
+        }
+
+        const sessionId = 'sessionId' in task ? (task as { sessionId?: string }).sessionId : undefined
+        if (!sessionId) {
+          throw new Error('NO_SESSION_ID')
+        }
+
+        const settings = getSettings()
+        let resolvedWorkdir = ''
+        let assignedPane = task.pane
+
+        if (task.type === 'chore' && 'directory' in task) {
+          resolvedWorkdir = expandPath(task.directory)
+        } else {
+          const occupiedPaneIds = new Set(
+            tasks
+              .filter((t) => t.id !== taskId && t.status === 'doing' && t.pane)
+              .map((t) => t.pane)
+          )
+          const repoId = 'repoId' in task ? task.repoId : undefined
+          const repo = repoId
+            ? settings.repos.find((r) => r.id === repoId)
+            : settings.repos[0]
+          if (!repo) {
+            throw new Error('NO_REPO_ASSIGNED')
+          }
+          const freePaneConfig = repo.panes.find((p) => !occupiedPaneIds.has(p.id))
+          if (!freePaneConfig) {
+            throw new Error('NO_FREE_PANE')
+          }
+          assignedPane = freePaneConfig.id
+          resolvedWorkdir = expandPath(freePaneConfig.path)
+        }
+
+        if ('branch' in task && task.branch) {
+          const baseBranch = 'baseBranch' in task ? task.baseBranch : undefined
+          await gitService.checkout(resolvedWorkdir, task.branch, baseBranch)
+        }
+
+        taskService.update(taskId, { status: 'doing', pane: assignedPane })
+
+        try {
+          getWindow()?.webContents.send('terminal:reset', taskId)
+
+          const planMode = task.type === 'research'
+          const dangerously = !planMode && (settings.useDangerouslySkipPermissions ?? false)
+          claudeService.start(taskId, resolvedWorkdir, undefined, dangerously, planMode, cols, rows, undefined, sessionId)
+
+          if (stopHookService) {
+            stopHookService.onTaskComplete(taskId, async () => {
+              const currentTask = taskService.list().find((t) => t.id === taskId)
+              if (!currentTask || currentTask.status === 'done') return
+              const { notificationsEnabled = true } = getSettings()
+              if (!notificationsEnabled) return
+
+              const notification = new Notification({
+                title: 'Claude が完了しました',
+                body: `「${currentTask.title}」`,
+                actions: [{ type: 'button', text: '承認して完了' }]
+              })
+              notification.on('action', (_, index) => {
+                if (index !== 0) return
+                const t = taskService.list().find((t) => t.id === taskId)
+                if (!t || t.status === 'done') return
+                taskService.update(taskId, { status: 'done', completedAt: new Date().toISOString() })
+                getWindow()?.webContents.send('tasks:updated')
+              })
+              notification.show()
+            })
+          }
+
+          const pid = terminalService.getPid(taskId)
+          if (pid) {
+            taskService.update(taskId, { pid, workdir: resolvedWorkdir })
+          }
+
+          terminalService.onData(taskId, (data) => {
+            const win = getWindow()
+            if (win && !win.isDestroyed()) {
+              win.webContents.send('terminal:data', { taskId, data })
+            }
+          })
+
+          claudeService.onContextUpdate((info) => {
+            if (info.taskId === taskId) {
+              taskService.update(taskId, {
+                contextUsed: info.used,
+                contextLimit: info.limit
+              })
+              const win = getWindow()
+              if (win && !win.isDestroyed()) {
+                win.webContents.send('claude:context-update', info)
+              }
+            }
+          })
+        } catch (startError) {
+          taskService.update(taskId, { status: 'done' })
+          throw startError
+        }
+      } catch (error) {
+        throw new Error(`Failed to resume Claude: ${(error as Error).message}`)
       }
     }
   )

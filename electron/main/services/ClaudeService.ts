@@ -18,15 +18,17 @@ export class ClaudeService {
     this.getSettings = getSettings
   }
 
-  start(taskId: string, workdir: string, prompt?: string, dangerously?: boolean, planMode?: boolean, cols?: number, rows?: number): void {
+  start(taskId: string, workdir: string, prompt?: string, dangerously?: boolean, planMode?: boolean, cols?: number, rows?: number, sessionId?: string, resumeSessionId?: string): void {
     this.terminalService.start(taskId, workdir, cols ?? 120, rows ?? 30, { CLAUDE_TASK_ID: taskId })
     let claudeArgs = ''
     if (dangerously) claudeArgs += ' --dangerously-skip-permissions'
     if (planMode) claudeArgs += ' --permission-mode plan'
+    if (resumeSessionId) claudeArgs += ` --resume ${resumeSessionId}`
+    else if (sessionId) claudeArgs += ` --session-id ${sessionId}`
     const claudeCmd = `claude${claudeArgs}\n`
     this.terminalService.write(taskId, claudeCmd)
 
-    if (prompt) {
+    if (!resumeSessionId && prompt) {
       setTimeout(() => {
         if (this.terminalService.hasSession(taskId)) {
           this.terminalService.write(taskId, prompt + '\n')

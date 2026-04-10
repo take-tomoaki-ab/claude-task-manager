@@ -15,6 +15,7 @@ type TaskStore = {
   archiveAllDone: () => Promise<void>
   restoreArchived: (id: string) => Promise<void>
   startTask: (taskId: string) => Promise<void>
+  resumeTask: (taskId: string) => Promise<void>
   setSearchQuery: (q: string) => void
   setTypeFilters: (types: TaskType[]) => void
 }
@@ -89,6 +90,12 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     const { panelCols, panelRows } = useTerminalStore.getState()
 
     await window.api.claude.start(taskId, workdir, prompt, panelCols, panelRows)
+    await get().fetchTasks()
+  },
+
+  resumeTask: async (taskId) => {
+    const { panelCols, panelRows } = useTerminalStore.getState()
+    await window.api.claude.resume(taskId, panelCols, panelRows)
     await get().fetchTasks()
   },
 

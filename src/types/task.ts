@@ -12,6 +12,7 @@ export type BaseTask = {
   repoId?: string
   title: string
   created_at?: string
+  sessionId?: string  // Claude session ID (for --resume)
 }
 
 export type DesignTask = {

@@ -95,6 +95,7 @@ export type IpcChannels = {
 
   // Claude
   'claude:start': [{ taskId: string; workdir: string; prompt?: string; cols?: number; rows?: number }, void]
+  'claude:resume': [{ taskId: string; cols?: number; rows?: number }, void]
 
   // Dev Server
   'devserver:start': [{ repoId: string; paneId: string; label: string }, void]
@@ -163,6 +164,7 @@ export type WindowApi = {
   }
   claude: {
     start: (taskId: string, workdir: string, prompt?: string, cols?: number, rows?: number) => Promise<void>
+    resume: (taskId: string, cols?: number, rows?: number) => Promise<void>
     onContextUpdate: (callback: (info: ContextInfo) => void) => () => void
   }
   devserver: {
