@@ -73,9 +73,6 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
           setBranchLoadError('ブランチが取得できませんでした')
         }
         setAvailableBranches(branches)
-        if (!editTask && branches.includes('main')) {
-          setForm((prev) => ({ ...prev, baseBranch: 'main' }))
-        }
       })
       .catch((e: Error) => setBranchLoadError(e.message))
   }
