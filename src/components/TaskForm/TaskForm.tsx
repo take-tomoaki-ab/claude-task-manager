@@ -3,6 +3,7 @@ import type { TaskType, RuntimeTask } from '../../types/task'
 import type { RepoConfig } from '../../types/ipc'
 import type { TicketProviderMeta } from '../../types/plugin'
 import { useTaskStore } from '../../stores/taskStore'
+import { BranchCombobox } from '../Common/BranchCombobox'
 
 type Props = {
   isOpen: boolean
@@ -277,10 +278,11 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
             {(form.type === 'feat' || form.type === 'bugfix' || form.type === 'research') && (
               <div>
                 <label className={labelClass}>Branch{req}</label>
-                <input
-                  type="text"
+                <BranchCombobox
                   value={form.branch}
-                  onChange={(e) => set('branch', e.target.value)}
+                  onChange={(v) => set('branch', v)}
+                  branches={availableBranches}
+                  allowNew={true}
                   placeholder="feature-name"
                   className={inputClass}
                   required
@@ -291,16 +293,14 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
             {(form.type === 'feat' || form.type === 'bugfix') && (
               <div>
                 <label className={labelClass}>分岐元ブランチ</label>
-                <select
+                <BranchCombobox
                   value={form.baseBranch}
-                  onChange={(e) => set('baseBranch', e.target.value)}
+                  onChange={(v) => set('baseBranch', v)}
+                  branches={availableBranches}
+                  allowNew={false}
+                  placeholder="現在のHEADから分岐"
                   className={inputClass}
-                >
-                  <option value="">現在のHEADから分岐</option>
-                  {availableBranches.map((b) => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
-                </select>
+                />
                 {branchLoadError ? (
                   <p className="text-xs text-red-400 mt-1">{branchLoadError}</p>
                 ) : branchSourceDir ? (
