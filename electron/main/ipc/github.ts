@@ -49,14 +49,36 @@ export async function syncReviewPRs(
       status: 'will_do',
       title: `[${pr.repositoryName}] #${pr.number} ${pr.title}`,
       pane: '',
-      url: pr.html_url
+      url: pr.html_url,
+      prStatus: pr.state as ReviewTask['prStatus']
     } as Omit<ReviewTask, 'id' | 'created_at'>)
     created++
   }
 
-  if (created > 0) {
-    getWindow()?.webContents.send('tasks:updated')
+  // 既存reviewタスクの prStatus を同期
+  const reviewTasksWithUrl = existingTasks.filter(
+    (t) => t.type === 'review' && (t as { url?: string }).url
+  )
+  let statusUpdated = 0
+  for (const task of reviewTasksWithUrl) {
+    const url = (task as { url?: string }).url!
+    try {
+      const prStatus = await gitHubService.fetchPRStatus(url, githubPat)
+      if (prStatus !== null && prStatus !== (task as { prStatus?: string }).prStatus) {
+        taskService.update(task.id, { prStatus } as Parameters<typeof taskService.update>[1])
+        statusUpdated++
+      }
+    } catch {
+      // 個別PRのエラーは無視
+    }
+  }
 
+  const hasChanges = created > 0 || statusUpdated > 0
+  if (hasChanges) {
+    getWindow()?.webContents.send('tasks:updated')
+  }
+
+  if (created > 0) {
     const { notificationsEnabled = true } = settings
     if (notificationsEnabled) {
       new Notification({

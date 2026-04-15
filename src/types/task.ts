@@ -31,6 +31,7 @@ export type FeatureTask = {
 export type ReviewTask = {
   type: 'review'
   url: string  // GitHub PR URL
+  prStatus?: 'open' | 'draft' | 'merged' | 'closed'
 } & BaseTask
 
 export type BugfixTask = {

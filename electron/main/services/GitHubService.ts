@@ -53,4 +53,28 @@ export class GitHubService {
       }
     })
   }
+
+  async fetchPRStatus(
+    url: string,
+    pat: string
+  ): Promise<'open' | 'draft' | 'merged' | 'closed' | null> {
+    const match = url.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/)
+    if (!match) return null
+    const [, owner, repo, number] = match
+
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${number}`
+    const res = await fetch(apiUrl, {
+      headers: {
+        Authorization: `Bearer ${pat}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      }
+    })
+    if (!res.ok) return null
+
+    const data = await res.json()
+    if (data.merged) return 'merged'
+    if (data.draft) return 'draft'
+    return data.state as 'open' | 'closed'
+  }
 }

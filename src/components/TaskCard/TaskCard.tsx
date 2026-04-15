@@ -199,7 +199,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                   >
                     PR
                   </button>
-                  <PRStatusBadge url={task.url} />
+                  <PRStatusBadge prStatus={task.prStatus} />
                 </div>
               )}
             </div>
@@ -260,7 +260,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                   >
                     PR
                   </button>
-                  <PRStatusBadge url={task.url} />
+                  <PRStatusBadge prStatus={task.prStatus} />
                 </div>
               )}
             </div>
@@ -285,7 +285,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                   >
                     PR
                   </button>
-                  <PRStatusBadge url={task.url} />
+                  <PRStatusBadge prStatus={task.prStatus} />
                 </div>
               )}
               {(task.type === 'feat' || task.type === 'bugfix') && 'ticket' in task && task.ticket && (
