@@ -10,6 +10,7 @@ export class ClaudeService {
   private contextCallbacks: Set<ContextUpdateCallback> = new Set()
   private notifiedThresholds: Map<string, Set<number>> = new Map()
   private maxContextUsed: Map<string, number> = new Map()
+  private cleanBuffers: Map<string, string> = new Map()
 
   constructor(
     terminalService: TerminalService,
@@ -39,6 +40,7 @@ export class ClaudeService {
 
     this.notifiedThresholds.set(taskId, new Set())
     this.maxContextUsed.set(taskId, 0)
+    this.cleanBuffers.set(taskId, '')
 
     this.terminalService.onData(taskId, (data) => {
       const info = this.parseContext(taskId, data)
@@ -59,6 +61,12 @@ export class ClaudeService {
       .replace(/\x1b[()][AB012]/g, '')                       // charset sequences
       .replace(/\r/g, '')                                    // CR
 
+    // チャンク境界でパターンが分断されるのを防ぐため直近500文字をバッファリング
+    const prev = this.cleanBuffers.get(taskId) ?? ''
+    const buffered = (prev + clean).slice(-500)
+    this.cleanBuffers.set(taskId, buffered)
+    const searchIn = buffered
+
     const patterns = [
       // "Context window usage: 75,234 / 100,000 tokens"
       /[Cc]ontext\s+window\s+usage:\s*([\d,]+)\s*\/\s*([\d,]+)\s*tokens/,
@@ -71,7 +79,7 @@ export class ClaudeService {
     ]
 
     for (const pattern of patterns) {
-      const match = clean.match(pattern)
+      const match = searchIn.match(pattern)
       if (match) {
         const used = parseInt(match[1].replace(/,/g, ''), 10)
         const limit = parseInt(match[2].replace(/,/g, ''), 10)
@@ -84,12 +92,12 @@ export class ClaudeService {
     // Claude Code status bar format: "↓ 8.6k tokens" or "↓ 239 tokens"
     // Tool sub-calls show small values (e.g. ↓ 67 tokens), so track the session maximum
     // to prevent the meter from going backwards.
-    const deltaMatch = clean.match(/↓\s*([\d.]+)(k?)\s*tokens/i)
+    const deltaMatch = searchIn.match(/↓\s*([\d.]+)(k?)\s*tokens/i)
     if (deltaMatch) {
       const raw = parseFloat(deltaMatch[1])
       const parsed = deltaMatch[2].toLowerCase() === 'k' ? Math.round(raw * 1000) : Math.round(raw)
-      const prev = this.maxContextUsed.get(taskId) ?? 0
-      const used = Math.max(prev, parsed)
+      const maxPrev = this.maxContextUsed.get(taskId) ?? 0
+      const used = Math.max(maxPrev, parsed)
       this.maxContextUsed.set(taskId, used)
       if (used > 0) {
         return { taskId, used, limit: 200000 }
@@ -97,8 +105,8 @@ export class ClaudeService {
     }
 
     // デバッグ: tokensという文字列が含まれるがパターンにマッチしなかった場合ログ出力
-    if (/tokens?/i.test(clean)) {
-      console.log('[ClaudeService] context parse miss:', JSON.stringify(clean.slice(0, 200)))
+    if (/tokens?/i.test(searchIn)) {
+      console.log('[ClaudeService] context parse miss:', JSON.stringify(searchIn.slice(-200)))
     }
 
     return null
