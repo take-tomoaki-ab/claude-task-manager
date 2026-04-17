@@ -9,6 +9,7 @@ export class ClaudeService {
   private getSettings: () => Pick<AppSettings, 'notificationsEnabled'>
   private contextCallbacks: Set<ContextUpdateCallback> = new Set()
   private notifiedThresholds: Map<string, Set<number>> = new Map()
+  private maxContextUsed: Map<string, number> = new Map()
 
   constructor(
     terminalService: TerminalService,
@@ -37,6 +38,7 @@ export class ClaudeService {
     }
 
     this.notifiedThresholds.set(taskId, new Set())
+    this.maxContextUsed.set(taskId, 0)
 
     this.terminalService.onData(taskId, (data) => {
       const info = this.parseContext(taskId, data)
@@ -80,11 +82,15 @@ export class ClaudeService {
     }
 
     // Claude Code status bar format: "↓ 8.6k tokens" or "↓ 239 tokens"
-    // ↓ = input tokens per API call; in multi-turn conversations this approximates context size
+    // Tool sub-calls show small values (e.g. ↓ 67 tokens), so track the session maximum
+    // to prevent the meter from going backwards.
     const deltaMatch = clean.match(/↓\s*([\d.]+)(k?)\s*tokens/i)
     if (deltaMatch) {
       const raw = parseFloat(deltaMatch[1])
-      const used = deltaMatch[2].toLowerCase() === 'k' ? Math.round(raw * 1000) : Math.round(raw)
+      const parsed = deltaMatch[2].toLowerCase() === 'k' ? Math.round(raw * 1000) : Math.round(raw)
+      const prev = this.maxContextUsed.get(taskId) ?? 0
+      const used = Math.max(prev, parsed)
+      this.maxContextUsed.set(taskId, used)
       if (used > 0) {
         return { taskId, used, limit: 200000 }
       }
