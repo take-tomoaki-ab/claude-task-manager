@@ -79,6 +79,17 @@ export class ClaudeService {
       }
     }
 
+    // Claude Code status bar format: "↓ 8.6k tokens" or "↓ 239 tokens"
+    // ↓ = input tokens per API call; in multi-turn conversations this approximates context size
+    const deltaMatch = clean.match(/↓\s*([\d.]+)(k?)\s*tokens/i)
+    if (deltaMatch) {
+      const raw = parseFloat(deltaMatch[1])
+      const used = deltaMatch[2].toLowerCase() === 'k' ? Math.round(raw * 1000) : Math.round(raw)
+      if (used > 0) {
+        return { taskId, used, limit: 200000 }
+      }
+    }
+
     // デバッグ: tokensという文字列が含まれるがパターンにマッチしなかった場合ログ出力
     if (/tokens?/i.test(clean)) {
       console.log('[ClaudeService] context parse miss:', JSON.stringify(clean.slice(0, 200)))
