@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain, safeStorage, protocol, dialog } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, safeStorage, protocol, dialog, powerMonitor } from 'electron'
 import { join, extname } from 'path'
 import { readdirSync, readFileSync, writeFileSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -357,6 +357,10 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+
+  powerMonitor.on('resume', () => {
+    mainWindow?.webContents.send('system:resume')
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

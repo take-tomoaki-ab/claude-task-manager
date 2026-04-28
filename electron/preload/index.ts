@@ -131,6 +131,14 @@ const api = {
       ipcRenderer.invoke('hooks:install'),
     uninstall: (): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('hooks:uninstall')
+  },
+
+  system: {
+    onResume: (callback: () => void): (() => void) => {
+      const listener = (): void => callback()
+      ipcRenderer.on('system:resume', listener)
+      return () => ipcRenderer.removeListener('system:resume', listener)
+    }
   }
 }
 

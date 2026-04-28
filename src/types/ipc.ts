@@ -202,4 +202,7 @@ export type WindowApi = {
     install: () => Promise<{ success: boolean; error?: string }>
     uninstall: () => Promise<{ success: boolean; error?: string }>
   }
+  system: {
+    onResume: (callback: () => void) => () => void
+  }
 }

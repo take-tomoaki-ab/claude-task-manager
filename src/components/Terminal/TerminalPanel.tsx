@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
+import { SerializeAddon } from '@xterm/addon-serialize'
 import '@xterm/xterm/css/xterm.css'
 import { useTerminalStore } from '../../stores/terminalStore'
 import { useTaskStore } from '../../stores/taskStore'
@@ -11,6 +12,7 @@ const PANEL_WIDTH = 480
 type TerminalEntry = {
   terminal: Terminal
   fitAddon: FitAddon
+  serializeAddon: SerializeAddon
   container: HTMLDivElement  // per-task専用コンテナ（使い回す）
   opened: boolean
 }
@@ -31,6 +33,10 @@ export default function TerminalPanel() {
   const terminalsRef = useRef<Map<string, TerminalEntry>>(new Map())
   const currentTaskRef = useRef<string | null>(null)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  // スリープ復帰時に保存したシリアライズバッファ
+  const savedBuffers = useRef<Map<string, string>>(new Map())
+  // xterm 再生成トリガー
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const getOrCreateEntry = useCallback((taskId: string): TerminalEntry => {
     const existing = terminalsRef.current.get(taskId)
@@ -46,7 +52,9 @@ export default function TerminalPanel() {
       }
     })
     const fitAddon = new FitAddon()
+    const serializeAddon = new SerializeAddon()
     terminal.loadAddon(fitAddon)
+    terminal.loadAddon(serializeAddon)
     terminal.loadAddon(new WebLinksAddon((_, url) => {
       window.api.shell.openExternal(url)
     }))
@@ -56,7 +64,7 @@ export default function TerminalPanel() {
     container.style.width = '100%'
     container.style.height = '100%'
 
-    const entry: TerminalEntry = { terminal, fitAddon, container, opened: false }
+    const entry: TerminalEntry = { terminal, fitAddon, serializeAddon, container, opened: false }
     terminalsRef.current.set(taskId, entry)
     return entry
   }, [])
@@ -87,6 +95,12 @@ export default function TerminalPanel() {
     if (!entry.opened) {
       entry.terminal.open(entry.container)
       entry.opened = true
+      // スリープ復帰時に保存したバッファを復元
+      const saved = savedBuffers.current.get(activeTaskId)
+      if (saved) {
+        entry.terminal.write(saved)
+        savedBuffers.current.delete(activeTaskId)
+      }
     }
 
     requestAnimationFrame(() => {
@@ -109,7 +123,7 @@ export default function TerminalPanel() {
     return () => {
       disposable.dispose()
     }
-  }, [isOpen, activeTaskId, getOrCreateEntry])
+  }, [isOpen, activeTaskId, getOrCreateEntry, refreshKey])
 
   // パネルが再表示された時にリサイズ＆強制再描画
   useEffect(() => {
@@ -176,7 +190,31 @@ export default function TerminalPanel() {
     }
   }, [activeTaskId, isOpen])
 
-  // スリープ復帰・ウィンドウフォーカス復帰時に再描画
+  // スリープ復帰: バッファ保存 → xterm 再生成
+  useEffect(() => {
+    const unsub = window.api.system.onResume(() => {
+      for (const [taskId, entry] of terminalsRef.current) {
+        try {
+          savedBuffers.current.set(taskId, entry.serializeAddon.serialize())
+        } catch {
+          // ignore
+        }
+        if (panelContainerRef.current?.contains(entry.container)) {
+          panelContainerRef.current.removeChild(entry.container)
+        }
+        entry.terminal.dispose()
+      }
+      terminalsRef.current.clear()
+      currentTaskRef.current = null
+      // GPU 安定を待ってから再描画トリガー
+      setTimeout(() => {
+        setRefreshKey((k) => k + 1)
+      }, 300)
+    })
+    return unsub
+  }, [])
+
+  // ウィンドウフォーカス復帰時に再描画（アプリ切替用）
   useEffect(() => {
     const refresh = () => {
       const { activeTaskId: tid, isOpen: open } = useTerminalStore.getState()
@@ -201,6 +239,7 @@ export default function TerminalPanel() {
 
     document.addEventListener('visibilitychange', onVisibilityChange)
     window.addEventListener('focus', refresh)
+    // スリープ復帰は system:resume ハンドラーが担当
 
     return () => {
       document.removeEventListener('visibilitychange', onVisibilityChange)
