@@ -1,5 +1,4 @@
-import type { TicketPlugin, TicketInfo } from './index'
-import type { PluginSettingField } from '../../../../src/types/plugin'
+import type { TicketPlugin, TicketInfo, PluginSettingField } from './index'
 
 type GitHubIssueRaw = {
   number: number
@@ -12,17 +11,7 @@ export class GitHubIssueTicketPlugin implements TicketPlugin {
   readonly id = 'github-issue'
   readonly displayName = 'GitHub Issue'
   readonly urlPattern = /github\.com\/[^/]+\/[^/]+\/issues\/\d+/
-  readonly settingFields: PluginSettingField[] = [
-    {
-      key: 'githubPat',
-      label: 'GitHub Personal Access Token',
-      type: 'password',
-      placeholder: 'ghp_xxxxxxxxxxxx',
-      description:
-        'Settings > Developer settings > Personal access tokens から発行（暗号化保存）。プライベートリポジトリや高頻度利用時に必要。',
-      encrypted: true,
-    },
-  ]
+  readonly settingFields: PluginSettingField[] = []
 
   canHandle(url: string): boolean {
     return this.urlPattern.test(url)

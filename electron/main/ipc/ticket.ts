@@ -12,7 +12,8 @@ export function registerTicketHandlers(
     if (!plugin) throw new Error('このURLに対応するプロバイダーがありません')
 
     const settings = getSettings()
-    const pluginSettings = settings.pluginSettings?.[plugin.id] ?? {}
+    const pluginSettings: Record<string, string> = { ...settings.pluginSettings?.[plugin.id] ?? {} }
+    if (settings.githubPat) pluginSettings.githubPat = settings.githubPat
     const info = await plugin.fetchTicket(url, pluginSettings)
 
     return {
