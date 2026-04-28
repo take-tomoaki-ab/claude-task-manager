@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { AppSettings, RepoConfig, PaneConfig, DevServerConfig } from '../types/ipc'
 import type { TicketProviderMeta, PluginCatalogEntry } from '../types/plugin'
@@ -104,6 +104,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const dragSrc = useRef<{ ri: number; pi: number; di: number } | null>(null)
   const [prSyncing, setPrSyncing] = useState(false)
   const [prSyncResult, setPrSyncResult] = useState<{ created: number; total: number } | null>(null)
   const [, setImportResult] = useState<'ok' | 'cancelled' | 'error' | null>(null)
@@ -182,6 +183,20 @@ export default function SettingsPage() {
 
   const removeDevServer = (ri: number, pi: number, di: number) => {
     setDeleteTarget({ kind: 'devserver', repoIndex: ri, paneIndex: pi, dsIndex: di })
+  }
+
+  const moveDevServer = (ri: number, pi: number, fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return
+    setSettings((prev) => {
+      const repos = [...prev.repos]
+      const panes = [...repos[ri].panes]
+      const devServers = [...panes[pi].devServers]
+      const [item] = devServers.splice(fromIndex, 1)
+      devServers.splice(toIndex, 0, item)
+      panes[pi] = { ...panes[pi], devServers }
+      repos[ri] = { ...repos[ri], panes }
+      return { ...prev, repos }
+    })
   }
 
   const confirmDelete = () => {
@@ -380,7 +395,21 @@ export default function SettingsPage() {
                     <div className="pl-3 border-l-2 border-gray-700">
                       <span className="text-xs text-gray-500 block mb-1.5">Dev Servers</span>
                       {pane.devServers.map((ds, di) => (
-                        <div key={di} className="flex items-center gap-2 mb-2">
+                        <div
+                          key={di}
+                          draggable
+                          onDragStart={() => { dragSrc.current = { ri, pi, di } }}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={() => {
+                            if (dragSrc.current && dragSrc.current.ri === ri && dragSrc.current.pi === pi) {
+                              moveDevServer(ri, pi, dragSrc.current.di, di)
+                            }
+                            dragSrc.current = null
+                          }}
+                          onDragEnd={() => { dragSrc.current = null }}
+                          className="flex items-center gap-2 mb-2 cursor-default"
+                        >
+                          <span className="text-gray-500 cursor-grab active:cursor-grabbing select-none px-0.5" title="ドラッグして並べ替え">⠿</span>
                           <input
                             type="text"
                             value={ds.label}
