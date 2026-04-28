@@ -105,6 +105,7 @@ export default function SettingsPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const dragSrc = useRef<{ ri: number; pi: number; di: number } | null>(null)
+  const [dragOver, setDragOver] = useState<{ ri: number; pi: number; di: number; position: 'top' | 'bottom' } | null>(null)
   const [prSyncing, setPrSyncing] = useState(false)
   const [prSyncResult, setPrSyncResult] = useState<{ created: number; total: number } | null>(null)
   const [, setImportResult] = useState<'ok' | 'cancelled' | 'error' | null>(null)
@@ -185,15 +186,17 @@ export default function SettingsPage() {
     setDeleteTarget({ kind: 'devserver', repoIndex: ri, paneIndex: pi, dsIndex: di })
   }
 
-  const moveDevServer = (ri: number, pi: number, fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex) return
+  const moveDevServer = (ri: number, pi: number, fromIndex: number, insertBefore: number) => {
+    if (insertBefore === fromIndex || insertBefore === fromIndex + 1) return
     setSettings((prev) => {
       const repos = [...prev.repos]
       const panes = [...repos[ri].panes]
       const devServers = [...panes[pi].devServers]
-      const [item] = devServers.splice(fromIndex, 1)
-      devServers.splice(toIndex, 0, item)
-      panes[pi] = { ...panes[pi], devServers }
+      const item = devServers[fromIndex]
+      const result = devServers.filter((_, i) => i !== fromIndex)
+      const adjustedIndex = fromIndex < insertBefore ? insertBefore - 1 : insertBefore
+      result.splice(adjustedIndex, 0, item)
+      panes[pi] = { ...panes[pi], devServers: result }
       repos[ri] = { ...repos[ri], panes }
       return { ...prev, repos }
     })
@@ -399,16 +402,32 @@ export default function SettingsPage() {
                           key={di}
                           draggable
                           onDragStart={() => { dragSrc.current = { ri, pi, di } }}
-                          onDragOver={(e) => e.preventDefault()}
+                          onDragOver={(e) => {
+                            e.preventDefault()
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            const position = e.clientY < rect.top + rect.height / 2 ? 'top' : 'bottom'
+                            setDragOver({ ri, pi, di, position })
+                          }}
+                          onDragLeave={(e) => {
+                            if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(null)
+                          }}
                           onDrop={() => {
-                            if (dragSrc.current && dragSrc.current.ri === ri && dragSrc.current.pi === pi) {
-                              moveDevServer(ri, pi, dragSrc.current.di, di)
+                            if (dragSrc.current && dragOver && dragOver.ri === ri && dragOver.pi === pi) {
+                              const insertBefore = dragOver.position === 'top' ? dragOver.di : dragOver.di + 1
+                              moveDevServer(ri, pi, dragSrc.current.di, insertBefore)
                             }
                             dragSrc.current = null
+                            setDragOver(null)
                           }}
-                          onDragEnd={() => { dragSrc.current = null }}
-                          className="flex items-center gap-2 mb-2 cursor-default"
+                          onDragEnd={() => { dragSrc.current = null; setDragOver(null) }}
+                          className="relative flex items-center gap-2 mb-2 cursor-default"
                         >
+                          {dragOver?.ri === ri && dragOver?.pi === pi && dragOver?.di === di && dragOver?.position === 'top' && (
+                            <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-400 rounded z-10" />
+                          )}
+                          {dragOver?.ri === ri && dragOver?.pi === pi && dragOver?.di === di && dragOver?.position === 'bottom' && (
+                            <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-blue-400 rounded z-10" />
+                          )}
                           <span className="text-gray-500 cursor-grab active:cursor-grabbing select-none px-0.5" title="ドラッグして並べ替え">⠿</span>
                           <input
                             type="text"
