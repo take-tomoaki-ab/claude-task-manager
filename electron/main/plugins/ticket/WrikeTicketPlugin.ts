@@ -4,6 +4,7 @@ import type { PluginSettingField } from '../../../../src/types/plugin'
 type WrikeTaskRaw = {
   id: string
   title: string
+  customItemTypeId?: string
 }
 
 export class WrikeTicketPlugin implements TicketPlugin {
@@ -19,6 +20,18 @@ export class WrikeTicketPlugin implements TicketPlugin {
       description: 'Wrike設定 > API > Personal access tokens から発行（暗号化保存）',
       encrypted: true,
     },
+    {
+      key: 'itemTypeFeatId',
+      label: 'カスタム項目タイプID（feat）',
+      type: 'text',
+      placeholder: '実装チケット の customItemTypeId',
+    },
+    {
+      key: 'itemTypeBugfixId',
+      label: 'カスタム項目タイプID（bugfix）',
+      type: 'text',
+      placeholder: 'QA指摘 の customItemTypeId',
+    },
   ]
 
   canHandle(url: string): boolean {
@@ -26,18 +39,23 @@ export class WrikeTicketPlugin implements TicketPlugin {
   }
 
   async fetchTicket(url: string, settings: Record<string, string>): Promise<TicketInfo> {
-    const { accessToken } = settings
+    const { accessToken, itemTypeFeatId, itemTypeBugfixId } = settings
     if (!accessToken) throw new Error('Wrikeアクセストークンが設定されていません')
 
     const rawId = this.extractTaskId(url)
     if (!rawId) throw new Error('WrikeのURLからタスクIDを取得できませんでした')
 
+    const fields = '["customItemTypeId"]'
     let res: Response
+
     if (/^\d+$/.test(rawId)) {
-      const params = new URLSearchParams({ permalink: url })
+      // numeric web ID → permalink パラメータで検索
+      const params = new URLSearchParams({ fields, permalink: url })
       res = await this.fetchWithAuth(`https://www.wrike.com/api/v4/tasks?${params}`, accessToken)
     } else {
-      res = await this.fetchWithAuth(`https://www.wrike.com/api/v4/tasks/${rawId}`, accessToken)
+      // エンコードID → 直接取得
+      const params = new URLSearchParams({ fields })
+      res = await this.fetchWithAuth(`https://www.wrike.com/api/v4/tasks/${rawId}?${params}`, accessToken)
     }
 
     if (!res.ok) {
@@ -52,8 +70,9 @@ export class WrikeTicketPlugin implements TicketPlugin {
     return {
       id: task.id,
       title: task.title,
-      taskType: null,
+      taskType: this.resolveTaskType(task.customItemTypeId, itemTypeFeatId, itemTypeBugfixId),
       url,
+      ...(task.customItemTypeId ? { meta: { customItemTypeId: task.customItemTypeId } } : {}),
     }
   }
 
@@ -71,4 +90,14 @@ export class WrikeTicketPlugin implements TicketPlugin {
     return null
   }
 
+  private resolveTaskType(
+    customItemTypeId: string | undefined,
+    featId?: string,
+    bugfixId?: string
+  ): 'feat' | 'bugfix' | null {
+    if (!customItemTypeId) return null
+    if (featId && customItemTypeId === featId) return 'feat'
+    if (bugfixId && customItemTypeId === bugfixId) return 'bugfix'
+    return null
+  }
 }
