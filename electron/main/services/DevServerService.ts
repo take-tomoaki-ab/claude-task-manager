@@ -4,6 +4,7 @@ import type { DevServerConfig, PaneConfig, DevServerStatus } from '../../../src/
 import { expandPath } from '../utils/path'
 
 export type DevServerChangeCallback = (statuses: DevServerStatus[]) => void
+export type AbnormalExitCallback = (label: string) => void
 
 export class DevServerService {
   private processes: Map<string, ChildProcess> = new Map()
@@ -11,6 +12,8 @@ export class DevServerService {
   private configs: Map<string, { repoId: string; paneConfig: PaneConfig; serverConfig: DevServerConfig }> =
     new Map()
   private changeCallbacks: Set<DevServerChangeCallback> = new Set()
+  private stoppingKeys: Set<string> = new Set()
+  private abnormalExitCallback?: AbnormalExitCallback
 
   private key(repoId: string, paneId: string, label: string): string {
     return `${repoId}:${paneId}:${label}`
@@ -74,8 +77,13 @@ export class DevServerService {
     child.on('exit', (code, signal) => {
       const current = this.logs.get(k) || ''
       this.logs.set(k, current + `\n[exited: code=${code} signal=${signal}]\n`)
+      const intentional = this.stoppingKeys.has(k)
+      this.stoppingKeys.delete(k)
       this.processes.delete(k)
       this.notifyChange()
+      if (!intentional && code !== 0) {
+        this.abnormalExitCallback?.(serverConfig.label)
+      }
     })
 
     this.notifyChange()
@@ -86,6 +94,7 @@ export class DevServerService {
     const child = this.processes.get(k)
     if (!child || child.pid == null) return
 
+    this.stoppingKeys.add(k)
     const pid = child.pid
     try {
       // detached: true で起動したプロセスグループ全体に SIGTERM を送る
@@ -136,6 +145,10 @@ export class DevServerService {
     return () => {
       this.changeCallbacks.delete(callback)
     }
+  }
+
+  onAbnormalExit(callback: AbnormalExitCallback): void {
+    this.abnormalExitCallback = callback
   }
 
   stopAll(): void {

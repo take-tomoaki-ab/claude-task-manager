@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain, safeStorage, protocol, dialog, powerMonitor } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, safeStorage, protocol, dialog, powerMonitor, Notification } from 'electron'
 import { join, extname } from 'path'
 import { readdirSync, readFileSync, writeFileSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -194,6 +194,13 @@ app.whenReady().then(() => {
   const claudeService = new ClaudeService(terminalService, getSettings)
   const devServerService = new DevServerService()
   devServerServiceInstance = devServerService
+  devServerService.onAbnormalExit((label) => {
+    if (!getSettings().notificationsEnabled) return
+    new Notification({
+      title: 'Dev Server 異常終了',
+      body: `「${label}」が予期せず終了しました`
+    }).show()
+  })
   const gitHubService = new GitHubService()
   const stopHookService = new StopHookService()
   stopHookServiceInstance = stopHookService
