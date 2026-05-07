@@ -51,11 +51,6 @@ export function registerClaudeHandlers(
           resolvedWorkdir = expandPath(task.directory)
         } else {
           // non-chore: タスクのリポジトリ内の空きペインを自動割り当て
-          const occupiedPaneIds = new Set(
-            tasks
-              .filter((t) => t.id !== taskId && t.status === 'doing' && t.pane)
-              .map((t) => t.pane)
-          )
           const repoId = 'repoId' in task ? task.repoId : undefined
           const repo = repoId
             ? settings.repos.find((r) => r.id === repoId)
@@ -63,6 +58,13 @@ export function registerClaudeHandlers(
           if (!repo) {
             throw new Error('NO_REPO_ASSIGNED')
           }
+          // 同一リポジトリ内のdoingタスクのみで占有判定（別リポジトリの同名paneを除外）
+          const occupiedPaneIds = new Set(
+            tasks
+              .filter((t) => t.id !== taskId && t.status === 'doing' && t.pane &&
+                (('repoId' in t ? t.repoId : undefined) === repo.id))
+              .map((t) => t.pane)
+          )
           const freePaneConfig = repo.panes.find((p) => !occupiedPaneIds.has(p.id))
           if (!freePaneConfig) {
             throw new Error('NO_FREE_PANE')
@@ -180,11 +182,6 @@ export function registerClaudeHandlers(
         if (task.type === 'chore' && 'directory' in task) {
           resolvedWorkdir = expandPath(task.directory)
         } else {
-          const occupiedPaneIds = new Set(
-            tasks
-              .filter((t) => t.id !== taskId && t.status === 'doing' && t.pane)
-              .map((t) => t.pane)
-          )
           const repoId = 'repoId' in task ? task.repoId : undefined
           const repo = repoId
             ? settings.repos.find((r) => r.id === repoId)
@@ -192,6 +189,13 @@ export function registerClaudeHandlers(
           if (!repo) {
             throw new Error('NO_REPO_ASSIGNED')
           }
+          // 同一リポジトリ内のdoingタスクのみで占有判定（別リポジトリの同名paneを除外）
+          const occupiedPaneIds = new Set(
+            tasks
+              .filter((t) => t.id !== taskId && t.status === 'doing' && t.pane &&
+                (('repoId' in t ? t.repoId : undefined) === repo.id))
+              .map((t) => t.pane)
+          )
           const freePaneConfig = repo.panes.find((p) => !occupiedPaneIds.has(p.id))
           if (!freePaneConfig) {
             throw new Error('NO_FREE_PANE')
