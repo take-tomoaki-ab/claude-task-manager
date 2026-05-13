@@ -31,11 +31,11 @@ export class ContextLineService {
   constructor(localServer: LocalHttpServer) {
     localServer.addRoute('/context-update', (body, res) => {
       try {
-        const { taskId, data } = JSON.parse(body) as { taskId?: string; data?: { context_window?: { total_input_tokens?: number; total_output_tokens?: number; context_window_size?: number } } }
+        const { taskId, data } = JSON.parse(body) as { taskId?: string; data?: { context_window?: { used_percentage?: number; context_window_size?: number } } }
         const cw = data?.context_window
-        if (taskId && cw?.context_window_size) {
-          const used = (cw.total_input_tokens ?? 0) + (cw.total_output_tokens ?? 0)
+        if (taskId && cw?.context_window_size && cw.used_percentage != null) {
           const limit = cw.context_window_size
+          const used = Math.round((cw.used_percentage / 100) * limit)
           for (const cb of this.callbacks) cb({ taskId, used, limit })
         }
         res.writeHead(200)
