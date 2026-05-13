@@ -551,7 +551,7 @@ export default function SettingsPage() {
                 }
                 className={`${inputClass} w-28`}
               />
-              <span className="text-xs text-gray-500">変更後は再起動が必要です</span>
+              <span className="text-xs text-gray-500">Stop Hook・Status Line Hook で共有（変更後は再起動が必要）</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400 w-16">インストール先</span>
