@@ -130,7 +130,13 @@ const api = {
     install: (): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('hooks:install'),
     uninstall: (): Promise<{ success: boolean; error?: string }> =>
-      ipcRenderer.invoke('hooks:uninstall')
+      ipcRenderer.invoke('hooks:uninstall'),
+    statuslineStatus: (): Promise<{ installed: boolean; path: string; managedByApp: boolean; registeredInSettings: boolean }> =>
+      ipcRenderer.invoke('hooks:statusline-status'),
+    statuslineInstall: (): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('hooks:statusline-install'),
+    statuslineUninstall: (): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('hooks:statusline-uninstall')
   },
 
   system: {

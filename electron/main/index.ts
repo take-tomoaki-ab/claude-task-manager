@@ -9,7 +9,9 @@ import { GitService } from './services/GitService'
 import { ClaudeService } from './services/ClaudeService'
 import { DevServerService } from './services/DevServerService'
 import { GitHubService } from './services/GitHubService'
+import { LocalHttpServer } from './services/LocalHttpServer'
 import { StopHookService } from './services/StopHookService'
+import { ContextLineService } from './services/ContextLineService'
 import { PluginRegistry } from './plugins/PluginRegistry'
 import { PLUGIN_CATALOG } from './plugins/catalog'
 import { registerTaskHandlers } from './ipc/tasks'
@@ -33,6 +35,7 @@ let mainWindow: BrowserWindow | null = null
 let devServerServiceInstance: DevServerService | null = null
 let terminalServiceInstance: TerminalService | null = null
 let stopHookServiceInstance: StopHookService | null = null
+let localHttpServerInstance: LocalHttpServer | null = null
 let prSyncTimerId: ReturnType<typeof setInterval> | null = null
 
 function getWindow(): BrowserWindow | null {
@@ -191,7 +194,6 @@ app.whenReady().then(() => {
   const terminalService = new TerminalService()
   terminalServiceInstance = terminalService
   const gitService = new GitService()
-  const claudeService = new ClaudeService(terminalService, getSettings)
   const devServerService = new DevServerService()
   devServerServiceInstance = devServerService
   devServerService.onAbnormalExit((label) => {
@@ -202,11 +204,15 @@ app.whenReady().then(() => {
     }).show()
   })
   const gitHubService = new GitHubService()
-  const stopHookService = new StopHookService()
+  const localHttpServer = new LocalHttpServer()
+  localHttpServerInstance = localHttpServer
+  const stopHookService = new StopHookService(localHttpServer)
   stopHookServiceInstance = stopHookService
+  const contextLineService = new ContextLineService(localHttpServer)
+  const claudeService = new ClaudeService(terminalService, getSettings, contextLineService)
   const initialPort = getSettings().stopHookPort ?? 39457
-  stopHookService.start(initialPort).catch((e) => {
-    console.error('[StopHookService] failed to start:', e)
+  localHttpServer.start(initialPort).catch((e) => {
+    console.error('[LocalHttpServer] failed to start:', e)
   })
 
   // Register IPC handlers
@@ -227,6 +233,11 @@ app.whenReady().then(() => {
   ipcMain.handle('hooks:status', () => stopHookService.getHookStatus())
   ipcMain.handle('hooks:install', () => stopHookService.installHook())
   ipcMain.handle('hooks:uninstall', () => stopHookService.uninstallHook())
+
+  // Status Line (context) IPC handlers
+  ipcMain.handle('hooks:statusline-status', () => contextLineService.getStatusLineStatus())
+  ipcMain.handle('hooks:statusline-install', () => contextLineService.installStatusLine())
+  ipcMain.handle('hooks:statusline-uninstall', () => contextLineService.uninstallStatusLine())
   registerDevServerHandlers(devServerService, getWindow, getSettings)
   registerGitHubHandlers(gitHubService, taskService, getSettings, getWindow)
   registerTicketHandlers(registry, getSettings)
@@ -380,7 +391,7 @@ app.on('will-quit', () => {
   if (prSyncTimerId) clearInterval(prSyncTimerId)
   devServerServiceInstance?.stopAll()
   terminalServiceInstance?.killAll()
-  stopHookServiceInstance?.stop()
+  localHttpServerInstance?.stop()
 })
 
 app.on('window-all-closed', () => {

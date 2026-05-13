@@ -1,5 +1,6 @@
 import { Notification } from 'electron'
 import type { TerminalService } from './TerminalService'
+import type { ContextLineService } from './ContextLineService'
 import type { AppSettings, ContextInfo } from '../../../src/types/ipc'
 
 export type ContextUpdateCallback = (info: ContextInfo) => void
@@ -14,10 +15,15 @@ export class ClaudeService {
 
   constructor(
     terminalService: TerminalService,
-    getSettings: () => Pick<AppSettings, 'notificationsEnabled'>
+    getSettings: () => Pick<AppSettings, 'notificationsEnabled'>,
+    contextLineService?: ContextLineService
   ) {
     this.terminalService = terminalService
     this.getSettings = getSettings
+    contextLineService?.onContextUpdate((info) => {
+      for (const cb of this.contextCallbacks) cb(info)
+      this.checkThresholds(info)
+    })
   }
 
   start(taskId: string, workdir: string, prompt?: string, dangerously?: boolean, planMode?: boolean, cols?: number, rows?: number, sessionId?: string, resumeSessionId?: string): void {

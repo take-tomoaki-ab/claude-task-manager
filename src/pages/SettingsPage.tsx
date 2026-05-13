@@ -111,12 +111,15 @@ export default function SettingsPage() {
   const [, setImportResult] = useState<'ok' | 'cancelled' | 'error' | null>(null)
   const [hookStatus, setHookStatus] = useState<{ installed: boolean; path: string; managedByApp: boolean; registeredInSettings: boolean } | null>(null)
   const [hookLoading, setHookLoading] = useState(false)
+  const [statuslineStatus, setStatuslineStatus] = useState<{ installed: boolean; path: string; managedByApp: boolean; registeredInSettings: boolean } | null>(null)
+  const [statuslineLoading, setStatuslineLoading] = useState(false)
 
   useEffect(() => {
     window.api.settings.get().then(setSettings)
     window.api.ticket.providers().then(setProviders).catch(() => setProviders([]))
     window.api.ticket.catalog().then(setCatalog).catch(() => setCatalog([]))
     window.api.hooks.status().then(setHookStatus).catch(() => {})
+    window.api.hooks.statuslineStatus().then(setStatuslineStatus).catch(() => {})
   }, [])
 
   const updateRepo = (ri: number, updates: Partial<RepoConfig>) => {
@@ -300,6 +303,42 @@ export default function SettingsPage() {
       setToast({ message: `エラー: ${(e as Error).message}`, type: 'error' })
     } finally {
       setHookLoading(false)
+    }
+  }, [])
+
+  const handleStatuslineInstall = useCallback(async () => {
+    setStatuslineLoading(true)
+    try {
+      const result = await window.api.hooks.statuslineInstall()
+      if (result.success) {
+        setToast({ message: 'Status Line Hook をインストールしました', type: 'success' })
+        const status = await window.api.hooks.statuslineStatus()
+        setStatuslineStatus(status)
+      } else {
+        setToast({ message: result.error ?? 'インストールに失敗しました', type: 'error' })
+      }
+    } catch (e) {
+      setToast({ message: `エラー: ${(e as Error).message}`, type: 'error' })
+    } finally {
+      setStatuslineLoading(false)
+    }
+  }, [])
+
+  const handleStatuslineUninstall = useCallback(async () => {
+    setStatuslineLoading(true)
+    try {
+      const result = await window.api.hooks.statuslineUninstall()
+      if (result.success) {
+        setToast({ message: 'Status Line Hook をアンインストールしました', type: 'success' })
+        const status = await window.api.hooks.statuslineStatus()
+        setStatuslineStatus(status)
+      } else {
+        setToast({ message: result.error ?? 'アンインストールに失敗しました', type: 'error' })
+      }
+    } catch (e) {
+      setToast({ message: `エラー: ${(e as Error).message}`, type: 'error' })
+    } finally {
+      setStatuslineLoading(false)
     }
   }, [])
 
@@ -545,6 +584,52 @@ export default function SettingsPage() {
               <button
                 onClick={handleHookUninstall}
                 disabled={hookLoading || !hookStatus?.installed || !hookStatus?.managedByApp}
+                className="px-4 py-1.5 rounded text-sm bg-red-700 hover:bg-red-600 text-white disabled:opacity-40"
+              >
+                アンインストール
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Status Line Hook */}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-300 mb-2">Claude Code Status Line Hook</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            Status Line Hook をインストールすると、Claude の各レスポンス後にコンテキスト使用量がリアルタイム更新されます。
+          </p>
+          <div className="bg-gray-800 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 w-16">インストール先</span>
+              <span className="text-xs text-gray-300 font-mono">
+                {statuslineStatus?.path ?? '~/.claude/statusline.sh'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 w-16">状態</span>
+              {statuslineStatus === null ? (
+                <span className="text-xs text-gray-500">確認中...</span>
+              ) : statuslineStatus.installed && statuslineStatus.managedByApp && statuslineStatus.registeredInSettings ? (
+                <span className="text-xs text-green-400">✅ インストール済み・settings.json 登録済み</span>
+              ) : statuslineStatus.installed && statuslineStatus.managedByApp && !statuslineStatus.registeredInSettings ? (
+                <span className="text-xs text-yellow-400">⚠️ statusline.sh はあるが settings.json 未登録（再インストールしてください）</span>
+              ) : statuslineStatus.installed ? (
+                <span className="text-xs text-yellow-400">⚠️ 別の statusline.sh が存在します（このアプリが管理していません）</span>
+              ) : (
+                <span className="text-xs text-gray-400">⬜ 未インストール</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={handleStatuslineInstall}
+                disabled={statuslineLoading || (statuslineStatus?.installed && statuslineStatus?.managedByApp && statuslineStatus?.registeredInSettings)}
+                className="px-4 py-1.5 rounded text-sm bg-green-700 hover:bg-green-600 text-white disabled:opacity-40"
+              >
+                {statuslineLoading ? '処理中...' : 'インストール'}
+              </button>
+              <button
+                onClick={handleStatuslineUninstall}
+                disabled={statuslineLoading || !statuslineStatus?.installed || !statuslineStatus?.managedByApp}
                 className="px-4 py-1.5 rounded text-sm bg-red-700 hover:bg-red-600 text-white disabled:opacity-40"
               >
                 アンインストール
