@@ -8,6 +8,7 @@ export type ContextUpdateCallback = (info: ContextInfo) => void
 export class ClaudeService {
   private terminalService: TerminalService
   private getSettings: () => Pick<AppSettings, 'notificationsEnabled'>
+  private contextLineService?: ContextLineService
   private contextCallbacks: Set<ContextUpdateCallback> = new Set()
   private notifiedThresholds: Map<string, Set<number>> = new Map()
   private maxContextUsed: Map<string, number> = new Map()
@@ -20,6 +21,7 @@ export class ClaudeService {
   ) {
     this.terminalService = terminalService
     this.getSettings = getSettings
+    this.contextLineService = contextLineService
     contextLineService?.onContextUpdate((info) => {
       for (const cb of this.contextCallbacks) cb(info)
       this.checkThresholds(info)
@@ -47,6 +49,7 @@ export class ClaudeService {
     this.notifiedThresholds.set(taskId, new Set())
     this.maxContextUsed.set(taskId, 0)
     this.cleanBuffers.set(taskId, '')
+    this.contextLineService?.resetTask(taskId)
 
     this.terminalService.onData(taskId, (data) => {
       const info = this.parseContext(taskId, data)
