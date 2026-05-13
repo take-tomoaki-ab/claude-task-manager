@@ -27,9 +27,6 @@ type ClaudeSettings = { statusLine?: unknown; [key: string]: unknown }
 
 export class ContextLineService {
   private callbacks = new Set<(info: ContextInfo) => void>()
-  // サブエージェントが同じ CLAUDE_TASK_ID を継承して小さいコンテキストで更新するため、
-  // セッション最大値を記録してメーターの逆行を防ぐ
-  private maxContextUsed = new Map<string, number>()
 
   constructor(localServer: LocalHttpServer) {
     localServer.addRoute('/context-update', (body, res) => {
@@ -37,11 +34,8 @@ export class ContextLineService {
         const { taskId, data } = JSON.parse(body) as { taskId?: string; data?: { context_window?: { total_input_tokens?: number; total_output_tokens?: number; context_window_size?: number } } }
         const cw = data?.context_window
         if (taskId && cw?.context_window_size) {
-          const raw = (cw.total_input_tokens ?? 0) + (cw.total_output_tokens ?? 0)
+          const used = (cw.total_input_tokens ?? 0) + (cw.total_output_tokens ?? 0)
           const limit = cw.context_window_size
-          const prevMax = this.maxContextUsed.get(taskId) ?? 0
-          const used = Math.max(prevMax, raw)
-          this.maxContextUsed.set(taskId, used)
           for (const cb of this.callbacks) cb({ taskId, used, limit })
         }
         res.writeHead(200)
@@ -51,10 +45,6 @@ export class ContextLineService {
         res.end('bad request')
       }
     })
-  }
-
-  resetTask(taskId: string): void {
-    this.maxContextUsed.delete(taskId)
   }
 
   onContextUpdate(cb: (info: ContextInfo) => void): () => void {

@@ -8,11 +8,13 @@ export type ContextUpdateCallback = (info: ContextInfo) => void
 export class ClaudeService {
   private terminalService: TerminalService
   private getSettings: () => Pick<AppSettings, 'notificationsEnabled'>
-  private contextLineService?: ContextLineService
   private contextCallbacks: Set<ContextUpdateCallback> = new Set()
   private notifiedThresholds: Map<string, Set<number>> = new Map()
+  // 正規表現パス用: デルタ値 (↓ 8.6k tokens) の累積に使用
   private maxContextUsed: Map<string, number> = new Map()
   private cleanBuffers: Map<string, string> = new Map()
+  // 全ソース共通のゲート: ここを通過した最大値より小さい更新は全て捨てる
+  private lastEmittedMax: Map<string, number> = new Map()
 
   constructor(
     terminalService: TerminalService,
@@ -21,10 +23,8 @@ export class ClaudeService {
   ) {
     this.terminalService = terminalService
     this.getSettings = getSettings
-    this.contextLineService = contextLineService
     contextLineService?.onContextUpdate((info) => {
-      for (const cb of this.contextCallbacks) cb(info)
-      this.checkThresholds(info)
+      this.fireContextUpdate(info)
     })
   }
 
@@ -48,18 +48,25 @@ export class ClaudeService {
 
     this.notifiedThresholds.set(taskId, new Set())
     this.maxContextUsed.set(taskId, 0)
+    this.lastEmittedMax.set(taskId, 0)
     this.cleanBuffers.set(taskId, '')
-    this.contextLineService?.resetTask(taskId)
 
     this.terminalService.onData(taskId, (data) => {
       const info = this.parseContext(taskId, data)
       if (info) {
-        for (const cb of this.contextCallbacks) {
-          cb(info)
-        }
-        this.checkThresholds(info)
+        this.fireContextUpdate(info)
       }
     })
+  }
+
+  // statusline・regex 両ソース共通の更新ゲート
+  // 前回通知値より大きい場合のみ下流へ流す（サブエージェントや小さいデルタを除去）
+  private fireContextUpdate(info: ContextInfo): void {
+    const prevMax = this.lastEmittedMax.get(info.taskId) ?? 0
+    if (info.used <= prevMax) return
+    this.lastEmittedMax.set(info.taskId, info.used)
+    for (const cb of this.contextCallbacks) cb(info)
+    this.checkThresholds(info)
   }
 
   parseContext(taskId: string, data: string): ContextInfo | null {
@@ -99,8 +106,6 @@ export class ClaudeService {
     }
 
     // Claude Code status bar format: "↓ 8.6k tokens" or "↓ 239 tokens"
-    // Tool sub-calls show small values (e.g. ↓ 67 tokens), so track the session maximum
-    // to prevent the meter from going backwards.
     const deltaMatch = searchIn.match(/↓\s*([\d.]+)(k?)\s*tokens/i)
     if (deltaMatch) {
       const raw = parseFloat(deltaMatch[1])
@@ -113,7 +118,6 @@ export class ClaudeService {
       }
     }
 
-    // デバッグ: tokensという文字列が含まれるがパターンにマッチしなかった場合ログ出力
     if (/tokens?/i.test(searchIn)) {
       console.log('[ClaudeService] context parse miss:', JSON.stringify(searchIn.slice(-200)))
     }
