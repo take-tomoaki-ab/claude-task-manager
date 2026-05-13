@@ -30,9 +30,15 @@ export function BranchCombobox({
     setInputValue(value)
   }, [value])
 
-  const filtered = branches.filter((b) =>
-    b.toLowerCase().includes(inputValue.toLowerCase())
-  )
+  const lowerInput = inputValue.toLowerCase()
+  const filtered = branches
+    .filter((b) => b.toLowerCase().includes(lowerInput))
+    .sort((a, b) => {
+      const aPrefix = a.toLowerCase().startsWith(lowerInput)
+      const bPrefix = b.toLowerCase().startsWith(lowerInput)
+      if (aPrefix === bPrefix) return 0
+      return aPrefix ? -1 : 1
+    })
 
   // allowNew=false のとき: 先頭に「HEAD から分岐」を含む候補リストを作成
   // allowNew=true のとき: filtered のみ
