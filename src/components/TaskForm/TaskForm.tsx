@@ -182,6 +182,10 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
 
   const configuredProviders = providers.filter((p) => p.configured)
 
+  const dependsOnOptions = form.type !== 'chore' && form.repoId
+    ? tasks.filter((t) => t.id !== editTask?.id && t.repoId === form.repoId)
+    : tasks.filter((t) => t.id !== editTask?.id)
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
       <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
@@ -247,7 +251,10 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
                   value={form.repoId}
                   onChange={(e) => {
                     const repoId = e.target.value
-                    set('repoId', repoId)
+                    setForm((prev) => {
+                      const dependsOnStillValid = tasks.some((t) => t.id === prev.depends_on && t.repoId === repoId)
+                      return { ...prev, repoId, depends_on: dependsOnStillValid ? prev.depends_on : '' }
+                    })
                     loadBranches(repoId, repos)
                   }}
                   className={inputClass}
@@ -385,7 +392,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
                 className={inputClass}
               >
                 <option value="">なし</option>
-                {tasks.filter((t) => t.id !== editTask?.id).map((t) => (
+                {dependsOnOptions.map((t) => (
                   <option key={t.id} value={t.id}>
                     [{t.type}] {t.title}
                   </option>
