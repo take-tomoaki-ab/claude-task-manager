@@ -39,6 +39,15 @@ electron/
       ClaudeService.ts    # claude起動・コンテキスト解析・通知
       DevServerService.ts # 開発サーバーspawn管理
       GitHubService.ts    # GitHub API（レビュー依頼PR取得）
+      LocalHttpServer.ts  # 共有HTTPサーバー（addRoute()で複数エンドポイント登録）
+      StopHookService.ts  # Stop Hook管理・/task-doneエンドポイント
+      ContextLineService.ts # Status Line Hook管理・/context-updateエンドポイント
+      McpServerService.ts # MCPサーバー（SSEトランスポート・create_task/list_tasks/update_task）
+      McpHookService.ts   # ~/.claude/settings.json のmcpServers自動管理
+    plugins/
+      PluginRegistry.ts   # プラグインレジストリ
+      catalog.ts          # プラグイン一覧（Wrike・GitHub Issue）
+      ticket/             # チケットプラグイン（WrikeTicketPlugin・GitHubIssueTicketPlugin）
     ipc/
       tasks.ts / terminal.ts / git.ts / claude.ts / devServer.ts / github.ts
     utils/path.ts         # パスユーティリティ
@@ -54,7 +63,7 @@ src/
   components/
     BackgroundSlideshow/  # 背景スライドショー（bg://プロトコル使用）
     BranchStatus/         # ブランチ状態表示（5秒ポーリング）
-    Common/               # ConfirmDialog, ConflictWarningModal
+    Common/               # ConfirmDialog, ConflictWarningModal, BranchCombobox
     ContextMeter/         # コンテキスト使用量プログレスバー
     FilterBar/            # 検索・タイプフィルタ・新規タスクボタン
     PaneStatusSidebar/    # ペイン状態・開発サーバー起動停止
@@ -81,6 +90,8 @@ src/
   - `bugfix`: タイトル / リポジトリ / ブランチ* / 分岐元ブランチ / Wrikeチケット* / プロンプト
   - `research`: タイトル / リポジトリ / ブランチ* / プロンプト*
   - `chore`: タイトル / ディレクトリ* / プロンプト（repoId不要）
+- **ブランチオートコンプリート**: ブランチ入力を Combobox に変更、既存ブランチをプレフィックス一致順に候補表示
+- **チケットプラグイン**: Wrike（デフォルト）と GitHub Issue をサポート（PluginRegistry架）
 - **編集**: タイプ以外の全フィールドを編集可能
 - **削除**: タスクの完全削除
 - **アーカイブ**: 完了タスクをアーカイブへ移動
@@ -99,10 +110,14 @@ src/
 - **ペイン競合検出**: 同一ペインに実行中タスクがあれば警告モーダル（強制起動も可）
 - **タスク完了**: 完了ボタンでステータス変更 + ターミナルセッション自動クローズ
 - **再起動時自動リセット**: 起動時にdoingタスクをwill_doに戻し、task_runtimeをクリア
+- **セッション再開**: 完了タスクカードの「再開」ボタンで `claude --resume <uuid>` による前セッション継続
+  - タスク起動時にUUIDを生成し `--session-id` フラグでClaudeに渡して保存
+  - 別ペインでも再開可能（Claudeセッションはグローバル保存）
 - **インタラクティブターミナル**: 右480pxスライドパネル
   - xterm.jsによる個別PTYセッション
   - パネルを閉じてもPTYプロセスは維持（バックグラウンド継続）
   - ResizeObserverによる自動リサイズ追従
+  - スリープ復帰・ウィンドウフォーカス時に自動再描画
 
 ### Claude Code 連携
 
@@ -117,6 +132,9 @@ src/
   - bugfix: `{branch}` `{ticket}`
   - research: `{branch}` `{prompt}`
   - chore: `{directory}`
+- **Stop Hook**: `~/.claude/hooks/stop.sh` でタスク完了を検知・HTTP通知（設定画面からインストール）
+- **Status Line Hook**: `~/.claude/statusline.sh` で各APIレスポンス後にコンテキスト使用量をリアルタイム更新（設定画面からインストール）
+- **MCP サーバー**: SSEトランスポートで `create_task` / `list_tasks` / `update_task` ツールを公開（設定画面からインストール、`~/.claude/settings.json` に自動登録）
 
 ### Git 連携
 
@@ -130,6 +148,8 @@ src/
 - **トークン使用量表示**: `75,234 / 200,000 tokens` 形式
 - **プログレスバー**: 緑(0〜80%) / 黄(80〜90%) / 赤(90%〜)
 - **デスクトップ通知**: 80%到達時 / 90%到達時 / タスク完了時
+- **リアルタイム更新**: Status Line Hook 経由で各APIレスポンス後に即時反映（stdout パースはフォールバック）
+  - used_percentageベースで計算、セッション最大値を追跡して逆行防止
 
 ### ペイン・開発サーバー・複数リポジトリ
 
@@ -137,6 +157,8 @@ src/
 - **開発サーバー制御**: ペインごとに複数サーバーを起動/停止
   - ●実行中（緑）/ ○停止中（灰）のステータス表示
   - ターミナルパネルでリアルタイムログ閲覧（1秒ポーリング）
+  - 設定画面でドラッグ＆ドロップ並べ替え（青線インジケータで挿入位置表示）
+  - 異常終了時にデスクトップ通知
 - **複数リポジトリ対応**:
   - 設定は `repos: RepoConfig[]` の階層構造（リポジトリ > ペイン）
   - タスク開始時はタスクの `repoId` が指すリポジトリ内のペインにのみ割り当て
@@ -186,6 +208,14 @@ src/
 | `backgroundImageDir` | 背景スライドショー画像ディレクトリ |
 | `backgroundIntervalSec` | スライドショー切替間隔（秒） |
 
+設定画面からインストール可能なフック・サービス：
+
+| 項目 | ファイル | 説明 |
+|---|---|---|
+| Stop Hook | `~/.claude/hooks/stop.sh` | タスク完了時にHTTP通知を送信 |
+| Status Line Hook | `~/.claude/statusline.sh` | 各APIレスポンス後にコンテキスト使用量を更新 |
+| MCP Server | `~/.claude/settings.json` の `mcpServers` | Claude Codeからタスク操作を可能にする |
+
 ---
 
 ## 重要な設計決定
@@ -198,6 +228,11 @@ src/
 - **DBファイル**: `app.getPath('userData')` に保存
 - **GitHub PAT**: `safeStorage.encryptString` で暗号化してDB保存
 - **PTY管理**: `Map<taskId, IPty>` でセッションをライフサイクル全体で維持
-- **コンテキスト解析**: node-pty stdout/stderrをリアルタイムパース（失敗時はメーター非表示）
+- **コンテキスト解析**: Status Line Hook 経由が主系、stdout/stderrパースはフォールバック。`used_percentage` ベースで計算し、セッション最大値を追跡して逆行防止
 - **bg://プロトコル**: `protocol.registerSchemesAsPrivileged` で`app.whenReady`より前に登録必要
 - **再起動時クリーンアップ**: 起動直後にdoing→will_do変換 + task_runtimeテーブル全削除
+- **LocalHttpServer**: Stop Hook・Status Line Hook・MCP SSEを共有する単一HTTPサーバー（`addRoute()` / `addRawRoute()` でエンドポイント追加）
+- **MCPトランスポート**: SSEトランスポートを使用。ポートは `~/.claude-task-manager/port` と同一のLocalHttpServer上で動作
+- **セッションID**: タスク起動時にUUIDを生成し `--session-id` でClaudeに渡す。`claude --resume <uuid>` で完了後も再開可能
+- **pane占有判定**: 同一リポジトリ内のみに限定（別リポジトリの同名paneは除外）
+- **resume時のworkdir**: `claude --resume` はcwdでセッションを検索するため、元のpaneのworkdirを使用
