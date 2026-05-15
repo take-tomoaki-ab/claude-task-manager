@@ -4,9 +4,14 @@ import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprot
 import type { LocalHttpServer } from './LocalHttpServer.js'
 import type { TaskService } from './TaskService.js'
 import type { Task } from '../../../src/types/task.js'
+import type { AppSettings } from '../../../src/types/ipc.js'
 
 export class McpServerService {
-  constructor(localServer: LocalHttpServer, taskService: TaskService) {
+  constructor(
+    localServer: LocalHttpServer,
+    taskService: TaskService,
+    getSettings: () => AppSettings
+  ) {
     const createServer = (): Server => {
       const server = new Server(
         { name: 'claude-task-manager', version: '1.0.0' },
@@ -54,6 +59,11 @@ export class McpServerService {
             },
           },
           {
+            name: 'list_repos',
+            description: '設定済みのリポジトリ一覧を取得する。create_task の repoId に使う値がわかる',
+            inputSchema: { type: 'object' as const, properties: {} },
+          },
+          {
             name: 'update_task',
             description: 'タスクのステータスやプロンプトを更新する',
             inputSchema: {
@@ -77,6 +87,10 @@ export class McpServerService {
         const args = (req.params.arguments ?? {}) as Record<string, unknown>
         try {
           switch (req.params.name) {
+            case 'list_repos': {
+              const repos = getSettings().repos.map((r) => ({ id: r.id, name: r.name }))
+              return { content: [{ type: 'text' as const, text: JSON.stringify(repos, null, 2) }] }
+            }
             case 'create_task': {
               const { type, title, status, pane, ...rest } = args as {
                 type: Task['type']
