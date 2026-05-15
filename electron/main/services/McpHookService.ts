@@ -5,6 +5,7 @@ import { homedir } from 'os'
 // ~/.claude/settings.json ではなく ~/.claude.json が Claude Code の MCP 設定ファイル
 const CLAUDE_JSON_FILE = path.join(homedir(), '.claude.json')
 const MCP_SERVER_NAME = 'toride'
+const LEGACY_MCP_SERVER_NAMES = ['claude-task-manager']
 
 type ClaudeJson = {
   mcpServers?: Record<string, { type: string; url: string }>
@@ -31,6 +32,9 @@ export class McpHookService {
       const url = `http://127.0.0.1:${port}/mcp`
       const data = this.readClaudeJson()
       if (!data.mcpServers) data.mcpServers = {}
+      for (const legacy of LEGACY_MCP_SERVER_NAMES) {
+        delete data.mcpServers[legacy]
+      }
       data.mcpServers[MCP_SERVER_NAME] = { type: 'http', url }
       this.writeClaudeJson(data)
       return { success: true }
