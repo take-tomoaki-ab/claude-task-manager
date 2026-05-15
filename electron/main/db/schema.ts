@@ -1,11 +1,23 @@
 import Database from 'better-sqlite3'
 import { app } from 'electron'
+import fs from 'fs'
 import path from 'path'
 
 let db: Database.Database
 
 export function initDatabase(): Database.Database {
-  const dbPath = path.join(app.getPath('userData'), 'toride.db')
+  const userDataDir = app.getPath('userData')
+  const dbPath = path.join(userDataDir, 'toride.db')
+
+  // アプリ名変更（claude-task-manager → toride）に伴うDB移行
+  if (!fs.existsSync(dbPath)) {
+    const oldDbPath = path.join(path.dirname(userDataDir), 'claude-task-manager', 'claude-task-manager.db')
+    if (fs.existsSync(oldDbPath)) {
+      fs.mkdirSync(userDataDir, { recursive: true })
+      fs.copyFileSync(oldDbPath, dbPath)
+    }
+  }
+
   db = new Database(dbPath)
 
   db.pragma('journal_mode = WAL')
