@@ -113,6 +113,8 @@ export default function SettingsPage() {
   const [hookLoading, setHookLoading] = useState(false)
   const [statuslineStatus, setStatuslineStatus] = useState<{ installed: boolean; path: string; managedByApp: boolean; registeredInSettings: boolean } | null>(null)
   const [statuslineLoading, setStatuslineLoading] = useState(false)
+  const [mcpStatus, setMcpStatus] = useState<{ installed: boolean; url: string } | null>(null)
+  const [mcpLoading, setMcpLoading] = useState(false)
 
   useEffect(() => {
     window.api.settings.get().then(setSettings)
@@ -120,6 +122,7 @@ export default function SettingsPage() {
     window.api.ticket.catalog().then(setCatalog).catch(() => setCatalog([]))
     window.api.hooks.status().then(setHookStatus).catch(() => {})
     window.api.hooks.statuslineStatus().then(setStatuslineStatus).catch(() => {})
+    window.api.mcp.status().then(setMcpStatus).catch(() => {})
   }, [])
 
   const updateRepo = (ri: number, updates: Partial<RepoConfig>) => {
@@ -339,6 +342,42 @@ export default function SettingsPage() {
       setToast({ message: `エラー: ${(e as Error).message}`, type: 'error' })
     } finally {
       setStatuslineLoading(false)
+    }
+  }, [])
+
+  const handleMcpInstall = useCallback(async () => {
+    setMcpLoading(true)
+    try {
+      const result = await window.api.mcp.install()
+      if (result.success) {
+        setToast({ message: 'MCP サーバを settings.json に登録しました', type: 'success' })
+        const status = await window.api.mcp.status()
+        setMcpStatus(status)
+      } else {
+        setToast({ message: result.error ?? '登録に失敗しました', type: 'error' })
+      }
+    } catch (e) {
+      setToast({ message: `エラー: ${(e as Error).message}`, type: 'error' })
+    } finally {
+      setMcpLoading(false)
+    }
+  }, [])
+
+  const handleMcpUninstall = useCallback(async () => {
+    setMcpLoading(true)
+    try {
+      const result = await window.api.mcp.uninstall()
+      if (result.success) {
+        setToast({ message: 'MCP サーバを settings.json から削除しました', type: 'success' })
+        const status = await window.api.mcp.status()
+        setMcpStatus(status)
+      } else {
+        setToast({ message: result.error ?? '削除に失敗しました', type: 'error' })
+      }
+    } catch (e) {
+      setToast({ message: `エラー: ${(e as Error).message}`, type: 'error' })
+    } finally {
+      setMcpLoading(false)
     }
   }, [])
 
@@ -630,6 +669,51 @@ export default function SettingsPage() {
               <button
                 onClick={handleStatuslineUninstall}
                 disabled={statuslineLoading || !statuslineStatus?.installed || !statuslineStatus?.managedByApp}
+                className="px-4 py-1.5 rounded text-sm bg-red-700 hover:bg-red-600 text-white disabled:opacity-40"
+              >
+                アンインストール
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* MCP サーバ */}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-300 mb-2">Claude Code MCP サーバ</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            インストールすると、Claude Code から <code className="text-gray-300">create_task</code> /
+            <code className="text-gray-300"> list_tasks</code> /
+            <code className="text-gray-300"> update_task</code> ツールでタスクを直接操作できます。
+            インストール後は Claude Code を再起動してください。
+          </p>
+          <div className="bg-gray-800 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 w-16">エンドポイント</span>
+              <span className="text-xs text-gray-300 font-mono">
+                {mcpStatus?.url || `http://127.0.0.1:${settings.stopHookPort ?? 39457}/mcp/sse`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400 w-16">状態</span>
+              {mcpStatus === null ? (
+                <span className="text-xs text-gray-500">確認中...</span>
+              ) : mcpStatus.installed ? (
+                <span className="text-xs text-green-400">✅ settings.json 登録済み</span>
+              ) : (
+                <span className="text-xs text-gray-400">⬜ 未登録</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={handleMcpInstall}
+                disabled={mcpLoading || mcpStatus?.installed === true}
+                className="px-4 py-1.5 rounded text-sm bg-green-700 hover:bg-green-600 text-white disabled:opacity-40"
+              >
+                {mcpLoading ? '処理中...' : 'インストール'}
+              </button>
+              <button
+                onClick={handleMcpUninstall}
+                disabled={mcpLoading || !mcpStatus?.installed}
                 className="px-4 py-1.5 rounded text-sm bg-red-700 hover:bg-red-600 text-white disabled:opacity-40"
               >
                 アンインストール

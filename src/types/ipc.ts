@@ -137,6 +137,11 @@ export type IpcChannels = {
   'hooks:statusline-status': [void, { installed: boolean; path: string; managedByApp: boolean; registeredInSettings: boolean }]
   'hooks:statusline-install': [void, { success: boolean; error?: string }]
   'hooks:statusline-uninstall': [void, { success: boolean; error?: string }]
+
+  // MCP Server
+  'mcp:status': [void, { installed: boolean; url: string }]
+  'mcp:install': [void, { success: boolean; error?: string }]
+  'mcp:uninstall': [void, { success: boolean; error?: string }]
 }
 
 // window.api の型定義（preload で expose するもの）
@@ -209,6 +214,11 @@ export type WindowApi = {
     statuslineStatus: () => Promise<{ installed: boolean; path: string; managedByApp: boolean; registeredInSettings: boolean }>
     statuslineInstall: () => Promise<{ success: boolean; error?: string }>
     statuslineUninstall: () => Promise<{ success: boolean; error?: string }>
+  }
+  mcp: {
+    status: () => Promise<{ installed: boolean; url: string }>
+    install: () => Promise<{ success: boolean; error?: string }>
+    uninstall: () => Promise<{ success: boolean; error?: string }>
   }
   system: {
     onResume: (callback: () => void) => () => void

@@ -139,6 +139,15 @@ const api = {
       ipcRenderer.invoke('hooks:statusline-uninstall')
   },
 
+  mcp: {
+    status: (): Promise<{ installed: boolean; url: string }> =>
+      ipcRenderer.invoke('mcp:status'),
+    install: (): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('mcp:install'),
+    uninstall: (): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('mcp:uninstall'),
+  },
+
   system: {
     onResume: (callback: () => void): (() => void) => {
       const listener = (): void => callback()

@@ -2,30 +2,46 @@ import http from 'http'
 import fs from 'fs'
 import path from 'path'
 import { homedir } from 'os'
+import { parse as parseUrl } from 'url'
 
 const PORT_FILE_DIR = path.join(homedir(), '.claude-task-manager')
 const PORT_FILE = path.join(PORT_FILE_DIR, 'port')
 
 type RouteHandler = (body: string, res: http.ServerResponse) => void
+type RawHandler = (req: http.IncomingMessage, res: http.ServerResponse) => void
 
 export class LocalHttpServer {
   private server: http.Server | null = null
   private port = 0
   private routes = new Map<string, RouteHandler>()
+  private rawRoutes = new Map<string, RawHandler>()
 
   addRoute(routePath: string, handler: RouteHandler): void {
     this.routes.set(routePath, handler)
   }
 
+  addRawRoute(routePath: string, handler: RawHandler): void {
+    this.rawRoutes.set(routePath, handler)
+  }
+
   async start(port: number): Promise<void> {
     return new Promise((resolve, reject) => {
       this.server = http.createServer((req, res) => {
+        const pathname = parseUrl(req.url ?? '').pathname ?? ''
+
+        // rawRoutes: any method, full req/res access
+        const rawHandler = this.rawRoutes.get(pathname)
+        if (rawHandler) {
+          rawHandler(req, res)
+          return
+        }
+
         if (req.method !== 'POST') {
           res.writeHead(404)
           res.end('not found')
           return
         }
-        const handler = this.routes.get(req.url ?? '')
+        const handler = this.routes.get(pathname)
         if (!handler) {
           res.writeHead(404)
           res.end('not found')

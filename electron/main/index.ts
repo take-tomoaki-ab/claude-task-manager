@@ -12,6 +12,8 @@ import { GitHubService } from './services/GitHubService'
 import { LocalHttpServer } from './services/LocalHttpServer'
 import { StopHookService } from './services/StopHookService'
 import { ContextLineService } from './services/ContextLineService'
+import { McpServerService } from './services/McpServerService'
+import { McpHookService } from './services/McpHookService'
 import { PluginRegistry } from './plugins/PluginRegistry'
 import { PLUGIN_CATALOG } from './plugins/catalog'
 import { registerTaskHandlers } from './ipc/tasks'
@@ -34,7 +36,6 @@ const registry = new PluginRegistry()
 let mainWindow: BrowserWindow | null = null
 let devServerServiceInstance: DevServerService | null = null
 let terminalServiceInstance: TerminalService | null = null
-let stopHookServiceInstance: StopHookService | null = null
 let localHttpServerInstance: LocalHttpServer | null = null
 let prSyncTimerId: ReturnType<typeof setInterval> | null = null
 
@@ -207,8 +208,9 @@ app.whenReady().then(() => {
   const localHttpServer = new LocalHttpServer()
   localHttpServerInstance = localHttpServer
   const stopHookService = new StopHookService(localHttpServer)
-  stopHookServiceInstance = stopHookService
   const contextLineService = new ContextLineService(localHttpServer)
+  const mcpHookService = new McpHookService()
+  new McpServerService(localHttpServer, taskService)
   const claudeService = new ClaudeService(terminalService, getSettings, contextLineService)
   const initialPort = getSettings().stopHookPort ?? 39457
   localHttpServer.start(initialPort).catch((e) => {
@@ -233,6 +235,11 @@ app.whenReady().then(() => {
   ipcMain.handle('hooks:status', () => stopHookService.getHookStatus())
   ipcMain.handle('hooks:install', () => stopHookService.installHook())
   ipcMain.handle('hooks:uninstall', () => stopHookService.uninstallHook())
+
+  // MCP Server IPC handlers
+  ipcMain.handle('mcp:status', () => mcpHookService.getStatus())
+  ipcMain.handle('mcp:install', () => mcpHookService.install(localHttpServer.getPort()))
+  ipcMain.handle('mcp:uninstall', () => mcpHookService.uninstall())
 
   // Status Line (context) IPC handlers
   ipcMain.handle('hooks:statusline-status', () => contextLineService.getStatusLineStatus())
