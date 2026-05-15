@@ -4,7 +4,7 @@ import path from 'path'
 import { homedir } from 'os'
 import { parse as parseUrl } from 'url'
 
-const PORT_FILE_DIR = path.join(homedir(), '.claude-task-manager')
+const PORT_FILE_DIR = path.join(homedir(), '.toride')
 const PORT_FILE = path.join(PORT_FILE_DIR, 'port')
 
 type RouteHandler = (body: string, res: http.ServerResponse) => void

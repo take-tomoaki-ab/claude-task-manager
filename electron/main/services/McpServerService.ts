@@ -15,7 +15,7 @@ export class McpServerService {
   ) {
     const createServer = (): Server => {
       const server = new Server(
-        { name: 'claude-task-manager', version: '1.0.0' },
+        { name: 'toride', version: '1.0.0' },
         { capabilities: { tools: {} } }
       )
 
@@ -23,7 +23,7 @@ export class McpServerService {
         tools: [
           {
             name: 'create_task',
-            description: 'Claude Task Manager にタスクを登録する',
+            description: 'Toride にタスクを登録する',
             inputSchema: {
               type: 'object' as const,
               properties: {

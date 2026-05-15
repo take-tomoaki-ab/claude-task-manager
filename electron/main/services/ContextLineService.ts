@@ -6,14 +6,14 @@ import type { LocalHttpServer } from './LocalHttpServer'
 
 const STATUSLINE_FILE = path.join(homedir(), '.claude', 'statusline.sh')
 const CLAUDE_SETTINGS_FILE = path.join(homedir(), '.claude', 'settings.json')
-const APP_MARKER = 'Claude Task Manager'
+const APP_MARKER = 'Toride'
 
 const STATUSLINE_CONTENT = `#!/bin/sh
 # ${APP_MARKER} - Status Line
-# このファイルは Claude Task Manager アプリが自動生成しました。
+# このファイルは Toride アプリが自動生成しました。
 # アプリの設定画面から管理できます。
 INPUT=$(cat)
-PORT_FILE="$HOME/.claude-task-manager/port"
+PORT_FILE="$HOME/.toride/port"
 if [ -z "$CLAUDE_TASK_ID" ] || [ ! -f "$PORT_FILE" ]; then
   exit 0
 fi

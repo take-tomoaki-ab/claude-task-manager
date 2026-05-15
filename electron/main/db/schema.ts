@@ -5,7 +5,7 @@ import path from 'path'
 let db: Database.Database
 
 export function initDatabase(): Database.Database {
-  const dbPath = path.join(app.getPath('userData'), 'claude-task-manager.db')
+  const dbPath = path.join(app.getPath('userData'), 'toride.db')
   db = new Database(dbPath)
 
   db.pragma('journal_mode = WAL')

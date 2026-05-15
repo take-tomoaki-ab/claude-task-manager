@@ -141,7 +141,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.claude-task-manager')
+  electronApp.setAppUserModelId('com.toride')
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
@@ -312,7 +312,7 @@ app.whenReady().then(() => {
   ipcMain.handle('settings:export', async (): Promise<boolean> => {
     if (!mainWindow) return false
     const result = await dialog.showSaveDialog(mainWindow, {
-      defaultPath: 'claude-task-manager-settings.json',
+      defaultPath: 'toride-settings.json',
       filters: [{ name: 'JSON', extensions: ['json'] }]
     })
     if (result.canceled || !result.filePath) return false

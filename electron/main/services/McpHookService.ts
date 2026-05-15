@@ -4,7 +4,7 @@ import { homedir } from 'os'
 
 // ~/.claude/settings.json ではなく ~/.claude.json が Claude Code の MCP 設定ファイル
 const CLAUDE_JSON_FILE = path.join(homedir(), '.claude.json')
-const MCP_SERVER_NAME = 'claude-task-manager'
+const MCP_SERVER_NAME = 'toride'
 
 type ClaudeJson = {
   mcpServers?: Record<string, { type: string; url: string }>

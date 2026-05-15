@@ -1,5 +1,5 @@
 {
-  "name": "claude-task-manager",
+  "name": "toride",
   "version": "1.0.0",
   "description": "Claude Code並列開発を効率化するタスク管理ダッシュボード",
   "main": "./out/main/index.js",
