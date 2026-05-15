@@ -7,6 +7,7 @@ import type { LocalHttpServer } from './LocalHttpServer'
 const STATUSLINE_FILE = path.join(homedir(), '.claude', 'statusline.sh')
 const CLAUDE_SETTINGS_FILE = path.join(homedir(), '.claude', 'settings.json')
 const APP_MARKER = 'ToRide'
+const LEGACY_MARKERS = ['Claude Task Manager']
 
 const STATUSLINE_CONTENT = `#!/bin/sh
 # ${APP_MARKER} - Status Line
@@ -52,11 +53,15 @@ export class ContextLineService {
     return () => this.callbacks.delete(cb)
   }
 
+  private isManagedFile(content: string): boolean {
+    return content.includes(APP_MARKER) || LEGACY_MARKERS.some((m) => content.includes(m))
+  }
+
   installStatusLine(): { success: boolean; error?: string } {
     try {
       if (fs.existsSync(STATUSLINE_FILE)) {
         const existing = fs.readFileSync(STATUSLINE_FILE, 'utf-8')
-        if (!existing.includes(APP_MARKER)) {
+        if (!this.isManagedFile(existing)) {
           return {
             success: false,
             error: `${STATUSLINE_FILE} に既存の statusline.sh が存在します。手動でバックアップしてから再実行してください。`
@@ -83,7 +88,7 @@ export class ContextLineService {
     try {
       if (fs.existsSync(STATUSLINE_FILE)) {
         const existing = fs.readFileSync(STATUSLINE_FILE, 'utf-8')
-        if (!existing.includes(APP_MARKER)) {
+        if (!this.isManagedFile(existing)) {
           return {
             success: false,
             error: `${STATUSLINE_FILE} はこのアプリが管理するファイルではないため削除できません。`
@@ -110,7 +115,7 @@ export class ContextLineService {
     if (exists) {
       try {
         const content = fs.readFileSync(STATUSLINE_FILE, 'utf-8')
-        managedByApp = content.includes(APP_MARKER)
+        managedByApp = this.isManagedFile(content)
       } catch {
         // ignore
       }

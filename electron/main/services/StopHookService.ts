@@ -7,6 +7,8 @@ const HOOK_INSTALL_DIR = path.join(homedir(), '.claude', 'hooks')
 const HOOK_FILE = path.join(HOOK_INSTALL_DIR, 'stop.sh')
 const CLAUDE_SETTINGS_FILE = path.join(homedir(), '.claude', 'settings.json')
 
+const LEGACY_MARKERS = ['Claude Task Manager']
+
 const HOOK_CONTENT = `#!/bin/sh
 # ToRide - Stop Hook
 # このファイルは ToRide アプリが自動生成しました。
@@ -74,12 +76,16 @@ export class StopHookService {
     )
   }
 
+  private isManagedFile(content: string): boolean {
+    return content.includes('ToRide') || LEGACY_MARKERS.some((m) => content.includes(m))
+  }
+
   installHook(): { success: boolean; error?: string } {
     try {
       // stop.sh の書き込み
       if (fs.existsSync(HOOK_FILE)) {
         const existing = fs.readFileSync(HOOK_FILE, 'utf-8')
-        if (!existing.includes('ToRide')) {
+        if (!this.isManagedFile(existing)) {
           return {
             success: false,
             error: `${HOOK_FILE} に既存の stop.sh が存在します。手動でバックアップしてから再実行してください。`
@@ -110,7 +116,7 @@ export class StopHookService {
       // stop.sh の削除
       if (fs.existsSync(HOOK_FILE)) {
         const existing = fs.readFileSync(HOOK_FILE, 'utf-8')
-        if (!existing.includes('ToRide')) {
+        if (!this.isManagedFile(existing)) {
           return {
             success: false,
             error: `${HOOK_FILE} はこのアプリが管理するファイルではないため削除できません。`
@@ -142,7 +148,7 @@ export class StopHookService {
     if (exists) {
       try {
         const content = fs.readFileSync(HOOK_FILE, 'utf-8')
-        managedByApp = content.includes('ToRide')
+        managedByApp = this.isManagedFile(content)
       } catch {
         // ignore
       }
