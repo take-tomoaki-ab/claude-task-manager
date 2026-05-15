@@ -38,7 +38,9 @@ export class TerminalService {
     })
 
     ptyProcess.onExit(() => {
-      this.sessions.delete(taskId)
+      if (this.sessions.get(taskId) === ptyProcess) {
+        this.sessions.delete(taskId)
+      }
     })
   }
 
