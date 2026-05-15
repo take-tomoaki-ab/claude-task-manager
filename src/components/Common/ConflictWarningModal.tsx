@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { RuntimeTask } from '../../types/task'
 
 type Props = {
@@ -8,6 +9,15 @@ type Props = {
 }
 
 export default function ConflictWarningModal({ isOpen, conflictingTask, onForce, onCancel }: Props) {
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); onCancel() }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isOpen, onCancel])
+
   if (!isOpen || !conflictingTask) return null
 
   return (
@@ -23,6 +33,7 @@ export default function ConflictWarningModal({ isOpen, conflictingTask, onForce,
         </p>
         <div className="flex justify-end gap-3">
           <button
+            autoFocus
             onClick={onCancel}
             className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 text-white text-sm"
           >

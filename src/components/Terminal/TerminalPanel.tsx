@@ -275,12 +275,16 @@ export default function TerminalPanel() {
               : '—'}
           </div>
         </div>
-        <button
-          onClick={closeTerminal}
-          className="text-gray-400 hover:text-white text-lg leading-none"
-        >
-          {'\u00D7'}
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-600">Ctrl+`</span>
+          <button
+            onClick={closeTerminal}
+            aria-label="\u30BF\u30FC\u30DF\u30CA\u30EB\u3092\u9589\u3058\u308B"
+            className="text-gray-400 hover:text-white text-lg leading-none outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded px-1"
+          >
+            {'\u00D7'}
+          </button>
+        </div>
       </div>
 
       {/* ターミナルコンテンツ - 常にDOMに存在させてxterm detach問題を防ぐ */}

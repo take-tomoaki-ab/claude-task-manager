@@ -10,6 +10,7 @@ type Props = {
   task: RuntimeTask
   hasFreePane?: boolean
   onEdit?: (task: RuntimeTask) => void
+  onNavigate?: (taskId: string, dir: 'up' | 'down' | 'left' | 'right') => void
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -21,7 +22,7 @@ const TYPE_COLORS: Record<string, string> = {
   chore: 'bg-gray-600'
 }
 
-function DoneDetail({ task }: { task: RuntimeTask }) {
+function DoneDetail({ task, onButtonKeyDown }: { task: RuntimeTask; onButtonKeyDown: (e: React.KeyboardEvent) => void }) {
   const [open, setOpen] = useState(false)
 
   const rows: { label: string; value: string }[] = []
@@ -39,6 +40,7 @@ function DoneDetail({ task }: { task: RuntimeTask }) {
     <div className="mb-2">
       <button
         onClick={() => setOpen((v) => !v)}
+        onKeyDown={onButtonKeyDown}
         className="text-xs text-gray-400 hover:text-gray-200 flex items-center gap-1"
       >
         <span>{open ? '▾' : '▸'}</span>
@@ -58,7 +60,7 @@ function DoneDetail({ task }: { task: RuntimeTask }) {
   )
 }
 
-export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
+export default function TaskCard({ task, hasFreePane = true, onEdit, onNavigate }: Props) {
   const tasks = useTaskStore((s) => s.tasks)
   const startTask = useTaskStore((s) => s.startTask)
   const resumeTask = useTaskStore((s) => s.resumeTask)
@@ -114,13 +116,49 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
     window.api.shell.openExternal(url)
   }
 
+  const handleCardKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).tagName === 'BUTTON') return
+    switch (e.key) {
+      case 'ArrowUp':    onNavigate?.(task.id, 'up');    e.preventDefault(); break
+      case 'ArrowDown':  onNavigate?.(task.id, 'down');  e.preventDefault(); break
+      case 'ArrowLeft':  onNavigate?.(task.id, 'left');  e.preventDefault(); break
+      case 'ArrowRight': onNavigate?.(task.id, 'right'); e.preventDefault(); break
+      case ' ': {
+        const firstBtn = e.currentTarget.querySelector('button:not([disabled])') as HTMLButtonElement
+        firstBtn?.focus()
+        e.preventDefault()
+        break
+      }
+      case 't': {
+        if (task.status === 'doing') {
+          openTerminal(task.id)
+          e.preventDefault()
+        }
+        break
+      }
+    }
+  }
+
+  const handleButtonKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      const card = (e.currentTarget as HTMLElement).closest('[data-card-id]') as HTMLElement
+      card?.focus()
+    }
+  }
+
   return (
     <>
-      <div className={`rounded-lg p-4 shadow mb-3 backdrop-blur-sm transition-all duration-200 ${
-        isHighlighted
-          ? 'bg-blue-900/60 ring-2 ring-blue-400/70'
-          : 'bg-gray-800/55'
-      }`}>
+      <div
+        data-card-id={task.id}
+        tabIndex={0}
+        onKeyDown={handleCardKeyDown}
+        className={`rounded-lg p-4 shadow mb-3 backdrop-blur-sm transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+          isHighlighted
+            ? 'bg-blue-900/60 ring-2 ring-blue-400/70'
+            : 'bg-gray-800/55'
+        }`}
+      >
         {/* Type badge + Title */}
         <div className="flex items-center gap-2 mb-2">
           <span className={`text-xs px-2 py-0.5 rounded text-white font-medium ${TYPE_COLORS[task.type]}`}>
@@ -145,6 +183,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
             <div className="flex items-center gap-2 mt-2">
               <button
                 onClick={handleStart}
+                onKeyDown={handleButtonKeyDown}
                 disabled={depBlocked || paneBlocked}
                 className={`px-3 py-1 rounded text-xs font-medium ${
                   depBlocked || paneBlocked
@@ -161,6 +200,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
               </button>
               <button
                 onClick={handleComplete}
+                onKeyDown={handleButtonKeyDown}
                 className="px-3 py-1 rounded text-xs bg-green-600 hover:bg-green-700 text-white"
                 title="実行せずに完了にする"
               >
@@ -169,6 +209,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
               {onEdit && (
                 <button
                   onClick={() => onEdit(task)}
+                  onKeyDown={handleButtonKeyDown}
                   className="px-3 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                 >
                   編集
@@ -178,6 +219,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
               {task.type === 'feat' && 'ticket' in task && task.ticket && (
                 <button
                   onClick={() => openLink(task.ticket)}
+                  onKeyDown={handleButtonKeyDown}
                   className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                 >
                   チケット
@@ -186,6 +228,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
               {task.type === 'bugfix' && 'ticket' in task && task.ticket && (
                 <button
                   onClick={() => openLink(task.ticket)}
+                  onKeyDown={handleButtonKeyDown}
                   className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                 >
                   チケット
@@ -195,6 +238,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openLink(task.url)}
+                    onKeyDown={handleButtonKeyDown}
                     className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                   >
                     PR
@@ -234,12 +278,14 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
             <div className="flex items-center gap-2 mt-2">
               <button
                 onClick={() => openTerminal(task.id)}
+                onKeyDown={handleButtonKeyDown}
                 className="px-3 py-1 rounded text-xs bg-blue-600 hover:bg-blue-700 text-white"
               >
                 対話を開く
               </button>
               <button
                 onClick={handleComplete}
+                onKeyDown={handleButtonKeyDown}
                 className="px-3 py-1 rounded text-xs bg-green-600 hover:bg-green-700 text-white"
               >
                 完了
@@ -247,6 +293,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
               {(task.type === 'feat' || task.type === 'bugfix') && 'ticket' in task && task.ticket && (
                 <button
                   onClick={() => openLink(task.ticket)}
+                  onKeyDown={handleButtonKeyDown}
                   className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                 >
                   チケット
@@ -256,6 +303,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openLink(task.url)}
+                    onKeyDown={handleButtonKeyDown}
                     className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                   >
                     PR
@@ -275,12 +323,13 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
                 完了: {new Date(task.completedAt).toLocaleString('ja-JP')}
               </p>
             )}
-            <DoneDetail task={task} />
+            <DoneDetail task={task} onButtonKeyDown={handleButtonKeyDown} />
             <div className="flex items-center gap-2 mt-2">
               {task.type === 'review' && 'url' in task && (
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openLink(task.url)}
+                    onKeyDown={handleButtonKeyDown}
                     className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                   >
                     PR
@@ -291,6 +340,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
               {(task.type === 'feat' || task.type === 'bugfix') && 'ticket' in task && task.ticket && (
                 <button
                   onClick={() => openLink(task.ticket)}
+                  onKeyDown={handleButtonKeyDown}
                   className="px-2 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300"
                 >
                   チケット
@@ -299,6 +349,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
               {'sessionId' in task && task.sessionId && (
                 <button
                   onClick={handleResume}
+                  onKeyDown={handleButtonKeyDown}
                   disabled={paneBlocked}
                   className="px-3 py-1 rounded text-xs bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -307,12 +358,14 @@ export default function TaskCard({ task, hasFreePane = true, onEdit }: Props) {
               )}
               <button
                 onClick={handleArchive}
+                onKeyDown={handleButtonKeyDown}
                 className="px-3 py-1 rounded text-xs bg-gray-600 hover:bg-gray-500 text-gray-300"
               >
                 アーカイブ
               </button>
               <button
                 onClick={handleRevert}
+                onKeyDown={handleButtonKeyDown}
                 className="px-3 py-1 rounded text-xs bg-yellow-700 hover:bg-yellow-600 text-white"
               >
                 未実行に戻す

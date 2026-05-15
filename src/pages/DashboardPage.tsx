@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useTaskStore } from '../stores/taskStore'
 import FilterBar from '../components/FilterBar/FilterBar'
 import PaneStatusSidebar from '../components/PaneStatusSidebar/PaneStatusSidebar'
@@ -24,6 +24,62 @@ export default function DashboardPage() {
   const tasks = useTaskStore((s) => s.tasks)
   const archiveAllDone = useTaskStore((s) => s.archiveAllDone)
   const isTerminalOpen = useTerminalStore((s) => s.isOpen)
+
+  const cardsByColumn = useMemo(
+    () => COLUMNS.map((col) => filteredTasks.filter((t) => t.status === col.status)),
+    [filteredTasks]
+  )
+
+  const handleNavigate = (taskId: string, dir: 'up' | 'down' | 'left' | 'right') => {
+    let colIdx = -1, cardIdx = -1
+    for (let c = 0; c < cardsByColumn.length; c++) {
+      const i = cardsByColumn[c].findIndex((t) => t.id === taskId)
+      if (i !== -1) { colIdx = c; cardIdx = i; break }
+    }
+    if (colIdx === -1) return
+
+    let newColIdx = colIdx, newCardIdx = cardIdx
+    if (dir === 'up') newCardIdx = Math.max(0, cardIdx - 1)
+    if (dir === 'down') newCardIdx = Math.min(cardsByColumn[colIdx].length - 1, cardIdx + 1)
+    if (dir === 'left') {
+      for (let c = colIdx - 1; c >= 0; c--) {
+        if (cardsByColumn[c].length > 0) { newColIdx = c; newCardIdx = Math.min(cardIdx, cardsByColumn[c].length - 1); break }
+      }
+    }
+    if (dir === 'right') {
+      for (let c = colIdx + 1; c < cardsByColumn.length; c++) {
+        if (cardsByColumn[c].length > 0) { newColIdx = c; newCardIdx = Math.min(cardIdx, cardsByColumn[c].length - 1); break }
+      }
+    }
+
+    const target = cardsByColumn[newColIdx]?.[newCardIdx]
+    if (target && target.id !== taskId) {
+      requestAnimationFrame(() => {
+        (document.querySelector(`[data-card-id="${target.id}"]`) as HTMLElement)?.focus()
+      })
+    }
+  }
+
+  // Ctrl+` でターミナルパネルをトグル（xterm より先にキャプチャ）
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === '`' && e.ctrlKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        const { isOpen, activeTaskId, closeTerminal } = useTerminalStore.getState()
+        if (isOpen) {
+          closeTerminal()
+          if (activeTaskId) {
+            requestAnimationFrame(() => {
+              (document.querySelector(`[data-card-id="${activeTaskId}"]`) as HTMLElement)?.focus()
+            })
+          }
+        }
+      }
+    }
+    window.addEventListener('keydown', handler, true)
+    return () => window.removeEventListener('keydown', handler, true)
+  }, [])
 
   useEffect(() => {
     fetchTasks()
@@ -87,6 +143,7 @@ export default function DashboardPage() {
                       task={task}
                       hasFreePane={hasFreePaneForTask(task)}
                       onEdit={task.status === 'will_do' ? (t) => { setEditingTask(t); setFormOpen(true) } : undefined}
+                      onNavigate={handleNavigate}
                     />
                   ))}
                   {columnTasks.length === 0 && (

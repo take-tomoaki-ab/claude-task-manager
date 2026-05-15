@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+
 type Props = {
   isOpen: boolean
   title: string
@@ -7,6 +9,15 @@ type Props = {
 }
 
 export default function ConfirmDialog({ isOpen, title, message, onConfirm, onCancel }: Props) {
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); onCancel() }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isOpen, onCancel])
+
   if (!isOpen) return null
 
   return (
@@ -16,6 +27,7 @@ export default function ConfirmDialog({ isOpen, title, message, onConfirm, onCan
         <p className="text-gray-300 mb-6">{message}</p>
         <div className="flex justify-end gap-3">
           <button
+            autoFocus
             onClick={onCancel}
             className="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 text-white text-sm"
           >
