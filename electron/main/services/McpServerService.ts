@@ -80,6 +80,17 @@ export class McpServerService {
               required: ['id'],
             },
           },
+          {
+            name: 'delete_task',
+            description: 'タスクを削除する',
+            inputSchema: {
+              type: 'object' as const,
+              properties: {
+                id: { type: 'string', description: 'タスクID' },
+              },
+              required: ['id'],
+            },
+          },
         ],
       }))
 
@@ -119,6 +130,11 @@ export class McpServerService {
               const { id, ...data } = args as { id: string } & Record<string, unknown>
               const task = taskService.update(id, data as Partial<Task>)
               return { content: [{ type: 'text' as const, text: JSON.stringify(task, null, 2) }] }
+            }
+            case 'delete_task': {
+              const { id } = args as { id: string }
+              taskService.delete(id)
+              return { content: [{ type: 'text' as const, text: `deleted: ${id}` }] }
             }
             default:
               throw new Error(`Unknown tool: ${req.params.name}`)
