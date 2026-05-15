@@ -8,8 +8,8 @@ const HOOK_FILE = path.join(HOOK_INSTALL_DIR, 'stop.sh')
 const CLAUDE_SETTINGS_FILE = path.join(homedir(), '.claude', 'settings.json')
 
 const HOOK_CONTENT = `#!/bin/sh
-# Toride - Stop Hook
-# このファイルは Toride アプリが自動生成しました。
+# ToRide - Stop Hook
+# このファイルは ToRide アプリが自動生成しました。
 # アプリの設定画面から管理できます。
 PORT_FILE="$HOME/.toride/port"
 if [ -z "$CLAUDE_TASK_ID" ] || [ ! -f "$PORT_FILE" ]; then
@@ -79,7 +79,7 @@ export class StopHookService {
       // stop.sh の書き込み
       if (fs.existsSync(HOOK_FILE)) {
         const existing = fs.readFileSync(HOOK_FILE, 'utf-8')
-        if (!existing.includes('Toride')) {
+        if (!existing.includes('ToRide')) {
           return {
             success: false,
             error: `${HOOK_FILE} に既存の stop.sh が存在します。手動でバックアップしてから再実行してください。`
@@ -110,7 +110,7 @@ export class StopHookService {
       // stop.sh の削除
       if (fs.existsSync(HOOK_FILE)) {
         const existing = fs.readFileSync(HOOK_FILE, 'utf-8')
-        if (!existing.includes('Toride')) {
+        if (!existing.includes('ToRide')) {
           return {
             success: false,
             error: `${HOOK_FILE} はこのアプリが管理するファイルではないため削除できません。`
@@ -142,7 +142,7 @@ export class StopHookService {
     if (exists) {
       try {
         const content = fs.readFileSync(HOOK_FILE, 'utf-8')
-        managedByApp = content.includes('Toride')
+        managedByApp = content.includes('ToRide')
       } catch {
         // ignore
       }

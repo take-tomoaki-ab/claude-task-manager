@@ -6,11 +6,11 @@ import type { LocalHttpServer } from './LocalHttpServer'
 
 const STATUSLINE_FILE = path.join(homedir(), '.claude', 'statusline.sh')
 const CLAUDE_SETTINGS_FILE = path.join(homedir(), '.claude', 'settings.json')
-const APP_MARKER = 'Toride'
+const APP_MARKER = 'ToRide'
 
 const STATUSLINE_CONTENT = `#!/bin/sh
 # ${APP_MARKER} - Status Line
-# このファイルは Toride アプリが自動生成しました。
+# このファイルは ToRide アプリが自動生成しました。
 # アプリの設定画面から管理できます。
 INPUT=$(cat)
 PORT_FILE="$HOME/.toride/port"

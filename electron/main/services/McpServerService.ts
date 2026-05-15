@@ -23,7 +23,7 @@ export class McpServerService {
         tools: [
           {
             name: 'create_task',
-            description: 'Toride にタスクを登録する',
+            description: 'ToRide にタスクを登録する',
             inputSchema: {
               type: 'object' as const,
               properties: {
