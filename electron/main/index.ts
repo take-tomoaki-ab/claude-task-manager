@@ -210,7 +210,9 @@ app.whenReady().then(() => {
   const stopHookService = new StopHookService(localHttpServer)
   const contextLineService = new ContextLineService(localHttpServer)
   const mcpHookService = new McpHookService()
-  new McpServerService(localHttpServer, taskService, getSettings)
+  new McpServerService(localHttpServer, taskService, getSettings, () => {
+    getWindow()?.webContents.send('tasks:updated')
+  })
   const claudeService = new ClaudeService(terminalService, getSettings, contextLineService)
   const initialPort = getSettings().stopHookPort ?? 39457
   localHttpServer.start(initialPort).catch((e) => {

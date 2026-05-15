@@ -10,7 +10,8 @@ export class McpServerService {
   constructor(
     localServer: LocalHttpServer,
     taskService: TaskService,
-    getSettings: () => AppSettings
+    getSettings: () => AppSettings,
+    notifyTasksUpdated: () => void = () => {}
   ) {
     const createServer = (): Server => {
       const server = new Server(
@@ -117,6 +118,7 @@ export class McpServerService {
                 pane: pane ?? '',
                 ...rest,
               } as Omit<Task, 'id' | 'created_at'>)
+              notifyTasksUpdated()
               return { content: [{ type: 'text' as const, text: JSON.stringify(task, null, 2) }] }
             }
             case 'list_tasks': {
@@ -129,11 +131,13 @@ export class McpServerService {
             case 'update_task': {
               const { id, ...data } = args as { id: string } & Record<string, unknown>
               const task = taskService.update(id, data as Partial<Task>)
+              notifyTasksUpdated()
               return { content: [{ type: 'text' as const, text: JSON.stringify(task, null, 2) }] }
             }
             case 'delete_task': {
               const { id } = args as { id: string }
               taskService.delete(id)
+              notifyTasksUpdated()
               return { content: [{ type: 'text' as const, text: `deleted: ${id}` }] }
             }
             default:
