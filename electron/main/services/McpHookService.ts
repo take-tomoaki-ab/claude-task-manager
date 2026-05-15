@@ -6,7 +6,7 @@ const CLAUDE_SETTINGS_FILE = path.join(homedir(), '.claude', 'settings.json')
 const MCP_SERVER_NAME = 'claude-task-manager'
 
 type ClaudeSettings = {
-  mcpServers?: Record<string, { type?: string; url: string }>
+  mcpServers?: Record<string, { url: string }>
   [key: string]: unknown
 }
 
@@ -27,10 +27,10 @@ export class McpHookService {
 
   install(port: number): { success: boolean; error?: string } {
     try {
-      const url = `http://127.0.0.1:${port}/mcp/sse`
+      const url = `http://127.0.0.1:${port}/mcp`
       const settings = this.readClaudeSettings()
       if (!settings.mcpServers) settings.mcpServers = {}
-      settings.mcpServers[MCP_SERVER_NAME] = { type: 'sse', url }
+      settings.mcpServers[MCP_SERVER_NAME] = { url }
       this.writeClaudeSettings(settings)
       return { success: true }
     } catch (e) {

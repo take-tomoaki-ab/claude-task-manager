@@ -1,15 +1,12 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js'
-import { parse as parseUrl } from 'url'
 import type { LocalHttpServer } from './LocalHttpServer.js'
 import type { TaskService } from './TaskService.js'
 import type { Task } from '../../../src/types/task.js'
 
 export class McpServerService {
   constructor(localServer: LocalHttpServer, taskService: TaskService) {
-    const transports = new Map<string, SSEServerTransport>()
-
     const createServer = (): Server => {
       const server = new Server(
         { name: 'claude-task-manager', version: '1.0.0' },
@@ -123,35 +120,12 @@ export class McpServerService {
       return server
     }
 
-    // SSE 接続エンドポイント (GET /mcp/sse)
-    localServer.addRawRoute('/mcp/sse', async (req, res) => {
-      if (req.method !== 'GET') {
-        res.writeHead(405)
-        res.end('method not allowed')
-        return
-      }
-      const transport = new SSEServerTransport('/mcp/message', res)
-      transports.set(transport.sessionId, transport)
-      transport.onclose = () => transports.delete(transport.sessionId)
+    // StreamableHTTP エンドポイント (GET/POST /mcp)
+    localServer.addRawRoute('/mcp', async (req, res) => {
+      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
       const server = createServer()
       await server.connect(transport)
-    })
-
-    // メッセージ受信エンドポイント (POST /mcp/message?sessionId=xxx)
-    localServer.addRawRoute('/mcp/message', async (req, res) => {
-      if (req.method !== 'POST') {
-        res.writeHead(405)
-        res.end('method not allowed')
-        return
-      }
-      const sessionId = parseUrl(req.url ?? '', true).query.sessionId as string
-      const transport = transports.get(sessionId)
-      if (!transport) {
-        res.writeHead(404)
-        res.end('session not found')
-        return
-      }
-      await transport.handlePostMessage(req, res)
+      await transport.handleRequest(req, res)
     })
   }
 }

@@ -690,7 +690,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400 w-16">エンドポイント</span>
               <span className="text-xs text-gray-300 font-mono">
-                {mcpStatus?.url || `http://127.0.0.1:${settings.stopHookPort ?? 39457}/mcp/sse`}
+                {mcpStatus?.url || `http://127.0.0.1:${settings.stopHookPort ?? 39457}/mcp`}
               </span>
             </div>
             <div className="flex items-center gap-2">
