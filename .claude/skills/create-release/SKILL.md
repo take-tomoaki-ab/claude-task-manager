@@ -1,6 +1,14 @@
-# リリース作成スキル
+# create-release
 
-引数としてリリースバージョン（例: `v1.2.0`）を受け取る。省略時はユーザーに確認する。
+リリースタグの作成・push・GitHubリリース公開を一括で行うスキル。
+
+## 使い方
+
+```
+/create-release v1.2.0
+```
+
+バージョンを省略した場合はユーザーに確認する。
 
 ## 手順
 
@@ -10,9 +18,9 @@
    - `feat:` → Features
    - `fix:` → Bug Fixes
    - `docs:` → Documentation
-   - `refactor:` / `chore:` / `perf:` などはその内容で適切なセクションに入れる
+   - `refactor:` / `chore:` / `perf:` などはその内容に応じて適切なセクションに入れる
    - 該当コミットがないセクションは省略する
-4. `.github/RELEASE_TEMPLATE.md` のフォーマットに従ってリリースノートを組み立てる
+4. `RELEASE_TEMPLATE.md`（このファイルと同じディレクトリ）のフォーマットに従ってリリースノートを組み立てる
 5. `$PREV_TAG` と `$NEXT_TAG` を実際のタグ名に置き換える
 6. タグがまだ存在しなければ作成し、リモートにpushする
 7. `gh release create <タグ> --title "<タグ>" --notes "<リリースノート>"` でリリースを作成する
