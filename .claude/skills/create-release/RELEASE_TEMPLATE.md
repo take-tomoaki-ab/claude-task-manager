@@ -9,4 +9,7 @@
 ### Documentation
 - 
 
-**Full Changelog**: https://github.com/take-tomoaki-ab/ToRide/compare/$PREV_TAG...$NEXT_TAG
+### Other Changes
+- 
+
+**Full Changelog**: https://github.com/take-tomoaki-ab/ToRide/compare/PREV_TAG...NEXT_TAG
