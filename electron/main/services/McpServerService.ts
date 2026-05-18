@@ -43,6 +43,24 @@ export class McpServerService {
                 directory: { type: 'string', description: '作業ディレクトリ (chore タスク用)' },
               },
               required: ['type', 'title'],
+              allOf: [
+                {
+                  if: { properties: { type: { enum: ['feat', 'bugfix', 'research'] } } },
+                  then: { required: ['branch'] },
+                },
+                {
+                  if: { properties: { type: { enum: ['review'] } } },
+                  then: { required: ['url'] },
+                },
+                {
+                  if: { properties: { type: { enum: ['design'] } } },
+                  then: { required: ['output'] },
+                },
+                {
+                  if: { properties: { type: { enum: ['chore'] } } },
+                  then: { required: ['directory'] },
+                },
+              ],
             },
           },
           {
