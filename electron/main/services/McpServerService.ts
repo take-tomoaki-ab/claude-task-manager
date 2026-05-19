@@ -33,34 +33,16 @@ export class McpServerService {
                   description: 'タスクのタイプ',
                 },
                 title: { type: 'string', description: 'タスクのタイトル' },
-                branch: { type: 'string', description: 'ブランチ名 (feat/bugfix/research)' },
+                branch: { type: 'string', description: 'ブランチ名（type が feat/bugfix/research の場合は必須）' },
                 baseBranch: { type: 'string', description: '分岐元ブランチ名' },
                 ticket: { type: 'string', description: 'WrikeチケットURL' },
                 prompt: { type: 'string', description: 'Claude に渡すプロンプト' },
                 repoId: { type: 'string', description: 'リポジトリID（設定画面で確認可能）' },
-                url: { type: 'string', description: 'GitHub PR URL (review タスク用)' },
-                output: { type: 'string', description: '出力先パス (design タスク用)' },
-                directory: { type: 'string', description: '作業ディレクトリ (chore タスク用)' },
+                url: { type: 'string', description: 'GitHub PR URL（type が review の場合は必須）' },
+                output: { type: 'string', description: '出力先パス（type が design の場合は必須）' },
+                directory: { type: 'string', description: '作業ディレクトリ（type が chore の場合は必須）' },
               },
               required: ['type', 'title'],
-              allOf: [
-                {
-                  if: { properties: { type: { enum: ['feat', 'bugfix', 'research'] } } },
-                  then: { required: ['branch'] },
-                },
-                {
-                  if: { properties: { type: { enum: ['review'] } } },
-                  then: { required: ['url'] },
-                },
-                {
-                  if: { properties: { type: { enum: ['design'] } } },
-                  then: { required: ['output'] },
-                },
-                {
-                  if: { properties: { type: { enum: ['chore'] } } },
-                  then: { required: ['directory'] },
-                },
-              ],
             },
           },
           {
