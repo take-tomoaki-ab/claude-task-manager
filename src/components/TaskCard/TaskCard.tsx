@@ -32,17 +32,19 @@ type SplitButtonProps = {
   disabled?: boolean
   disabledTitle?: string
   colorClass: string
-  currentMode: LaunchMode
-  onClickDefault: () => void
-  onClickMode: (mode: LaunchMode) => void
+  defaultMode: LaunchMode
+  onLaunch: (mode: LaunchMode) => void
   onKeyDown: (e: React.KeyboardEvent) => void
 }
 
-function SplitButton({ label, disabled, disabledTitle, colorClass, currentMode, onClickDefault, onClickMode, onKeyDown }: SplitButtonProps) {
+function SplitButton({ label, disabled, disabledTitle, colorClass, defaultMode, onLaunch, onKeyDown }: SplitButtonProps) {
+  const [selectedMode, setSelectedMode] = useState<LaunchMode>(defaultMode)
   const [open, setOpen] = useState(false)
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 })
   const triggerRef = useRef<HTMLButtonElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { setSelectedMode(defaultMode) }, [defaultMode])
 
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) return
@@ -68,13 +70,13 @@ function SplitButton({ label, disabled, disabledTitle, colorClass, currentMode, 
   return (
     <div className="flex">
       <button
-        onClick={disabled ? undefined : onClickDefault}
+        onClick={disabled ? undefined : () => onLaunch(selectedMode)}
         onKeyDown={onKeyDown}
         disabled={disabled}
         title={disabled ? disabledTitle : undefined}
         className={`px-3 py-1 rounded-l text-xs font-medium ${base}`}
       >
-        {label}（{currentMode}）
+        {label}（{selectedMode}）
       </button>
       <button
         ref={triggerRef}
@@ -95,9 +97,9 @@ function SplitButton({ label, disabled, disabledTitle, colorClass, currentMode, 
           {ALL_LAUNCH_MODES.map((mode) => (
             <button
               key={mode}
-              onClick={() => { setOpen(false); onClickMode(mode) }}
+              onClick={() => { setSelectedMode(mode); setOpen(false) }}
               className={`block w-full text-left px-4 py-1.5 text-xs whitespace-nowrap ${
-                mode === currentMode
+                mode === selectedMode
                   ? 'text-white bg-gray-700'
                   : 'text-gray-300 hover:bg-gray-700'
               }`}
@@ -277,9 +279,8 @@ export default function TaskCard({ task, hasFreePane = true, defaultLaunchMode =
                 disabled={depBlocked || paneBlocked}
                 disabledTitle={depBlocked ? '依存タスクが未完了です' : paneBlocked ? '空きペインがありません' : undefined}
                 colorClass="bg-blue-600 hover:bg-blue-700 text-white"
-                currentMode={effectiveDefaultMode}
-                onClickDefault={() => handleStart(effectiveDefaultMode)}
-                onClickMode={(mode) => handleStart(mode)}
+                defaultMode={effectiveDefaultMode}
+                onLaunch={(mode) => handleStart(mode)}
                 onKeyDown={handleButtonKeyDown}
               />
               <button
@@ -436,9 +437,8 @@ export default function TaskCard({ task, hasFreePane = true, defaultLaunchMode =
                   disabled={paneBlocked}
                   disabledTitle="空きペインがありません"
                   colorClass="bg-indigo-600 hover:bg-indigo-700 text-white"
-                  currentMode={effectiveDefaultMode}
-                  onClickDefault={() => handleResume(effectiveDefaultMode)}
-                  onClickMode={(mode) => handleResume(mode)}
+                  defaultMode={effectiveDefaultMode}
+                  onLaunch={(mode) => handleResume(mode)}
                   onKeyDown={handleButtonKeyDown}
                 />
               )}
