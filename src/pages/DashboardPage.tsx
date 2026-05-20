@@ -7,7 +7,7 @@ import TaskForm from '../components/TaskForm/TaskForm'
 import TerminalPanel from '../components/Terminal/TerminalPanel'
 import { useTerminalStore } from '../stores/terminalStore'
 import type { TaskStatus, RuntimeTask } from '../types/task'
-import type { RepoConfig } from '../types/ipc'
+import type { RepoConfig, LaunchMode } from '../types/ipc'
 
 const COLUMNS: { status: TaskStatus; label: string; borderColor: string }[] = [
   { status: 'will_do', label: '未実行', borderColor: 'border-t-gray-500' },
@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<RuntimeTask | null>(null)
   const [repos, setRepos] = useState<RepoConfig[]>([])
+  const [settingsLaunchMode, setSettingsLaunchMode] = useState<LaunchMode>('normal')
   const fetchTasks = useTaskStore((s) => s.fetchTasks)
   const filteredTasks = useTaskStore((s) => s.filteredTasks)
   const tasks = useTaskStore((s) => s.tasks)
@@ -83,7 +84,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchTasks()
-    window.api.settings.get().then((s) => setRepos(s.repos ?? []))
+    window.api.settings.get().then((s) => {
+      setRepos(s.repos ?? [])
+      if (s.useDangerouslySkipPermissions) setSettingsLaunchMode('bypass')
+      else if (s.useAutoMode) setSettingsLaunchMode('auto')
+      else setSettingsLaunchMode('normal')
+    })
   }, [fetchTasks])
 
   useEffect(() => {
@@ -142,6 +148,7 @@ export default function DashboardPage() {
                       key={task.id}
                       task={task}
                       hasFreePane={hasFreePaneForTask(task)}
+                      defaultLaunchMode={settingsLaunchMode}
                       onEdit={task.status === 'will_do' ? (t) => { setEditingTask(t); setFormOpen(true) } : undefined}
                       onNavigate={handleNavigate}
                     />

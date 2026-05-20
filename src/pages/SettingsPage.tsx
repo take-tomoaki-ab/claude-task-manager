@@ -739,19 +739,38 @@ export default function SettingsPage() {
 
         {/* Claude 起動オプション */}
         <section>
-          <h2 className="text-sm font-semibold text-gray-300 mb-2">Claude Code 起動オプション</h2>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={settings.useDangerouslySkipPermissions ?? false}
-              onChange={(e) => setSettings((prev) => ({ ...prev, useDangerouslySkipPermissions: e.target.checked }))}
-              className="w-4 h-4 rounded"
-            />
-            <span className="text-sm text-gray-300">
-              <span className="font-mono text-yellow-400">--dangerously-skip-permissions</span> で起動する
-            </span>
-          </label>
-          <p className="text-xs text-gray-500 mt-1 ml-7">有効にするとパーミッション確認なしで Claude が操作を実行します</p>
+          <h2 className="text-sm font-semibold text-gray-300 mb-2">Claude Code 起動オプション（デフォルト）</h2>
+          <div className="space-y-2">
+            {([
+              { value: 'normal', label: 'normal', desc: 'パーミッション確認あり（デフォルト）', color: 'text-gray-300' },
+              { value: 'auto',   label: 'auto',   desc: '操作を自動承認して実行（--permission-mode auto）', color: 'text-blue-400' },
+              { value: 'bypass', label: 'bypass', desc: 'パーミッション確認なしで実行（--dangerously-skip-permissions）', color: 'text-yellow-400' },
+            ] as const).map(({ value, label, desc, color }) => {
+              const checked =
+                value === 'bypass' ? (settings.useDangerouslySkipPermissions ?? false) :
+                value === 'auto'   ? (!settings.useDangerouslySkipPermissions && (settings.useAutoMode ?? false)) :
+                (!settings.useDangerouslySkipPermissions && !settings.useAutoMode)
+              return (
+                <label key={value} className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="launchMode"
+                    checked={checked}
+                    onChange={() => setSettings((prev) => ({
+                      ...prev,
+                      useAutoMode: value === 'auto',
+                      useDangerouslySkipPermissions: value === 'bypass',
+                    }))}
+                    className="mt-0.5 w-4 h-4"
+                  />
+                  <span className="text-sm">
+                    <span className={`font-mono font-medium ${color}`}>{label}</span>
+                    <span className="text-gray-400 ml-2 text-xs">{desc}</span>
+                  </span>
+                </label>
+              )
+            })}
+          </div>
         </section>
 
         {/* プロンプトテンプレート */}

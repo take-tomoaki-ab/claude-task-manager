@@ -21,6 +21,7 @@ dist-electron
 # TypeScript
 *.js.map
 *.d.ts.map
+*.tsbuildinfo
 
 # Logs
 npm-debug.log*

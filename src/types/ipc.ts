@@ -21,6 +21,9 @@ export type RepoConfig = {
   panes: PaneConfig[]
 }
 
+// Claude起動モード
+export type LaunchMode = 'normal' | 'auto' | 'bypass' | 'plan'
+
 // アプリ設定
 export type AppSettings = {
   repos: RepoConfig[]
@@ -28,6 +31,7 @@ export type AppSettings = {
   githubUsername?: string  // GitHub ユーザー名（PR自動同期用）
   githubPrSyncIntervalMin?: number  // PR同期間隔（分、デフォルト5）
   useDangerouslySkipPermissions?: boolean  // claude --dangerously-skip-permissions で起動するか
+  useAutoMode?: boolean  // claude --permission-mode auto で起動するか
   promptTemplates?: Record<string, string>  // タスクタイプ別プロンプトテンプレート
   backgroundImageDir?: string  // 背景画像ディレクトリ
   backgroundIntervalSec?: number  // スライドショー間隔（秒）
@@ -94,8 +98,8 @@ export type IpcChannels = {
   'git:branches': [string, string[]]
 
   // Claude
-  'claude:start': [{ taskId: string; workdir: string; prompt?: string; cols?: number; rows?: number }, void]
-  'claude:resume': [{ taskId: string; cols?: number; rows?: number }, void]
+  'claude:start': [{ taskId: string; workdir: string; prompt?: string; cols?: number; rows?: number; launchMode?: LaunchMode }, void]
+  'claude:resume': [{ taskId: string; cols?: number; rows?: number; launchMode?: LaunchMode }, void]
 
   // Dev Server
   'devserver:start': [{ repoId: string; paneId: string; label: string }, void]
@@ -173,8 +177,8 @@ export type WindowApi = {
     branches: (workdir: string) => Promise<string[]>
   }
   claude: {
-    start: (taskId: string, workdir: string, prompt?: string, cols?: number, rows?: number) => Promise<void>
-    resume: (taskId: string, cols?: number, rows?: number) => Promise<void>
+    start: (taskId: string, workdir: string, prompt?: string, cols?: number, rows?: number, launchMode?: LaunchMode) => Promise<void>
+    resume: (taskId: string, cols?: number, rows?: number, launchMode?: LaunchMode) => Promise<void>
     onContextUpdate: (callback: (info: ContextInfo) => void) => () => void
   }
   devserver: {
