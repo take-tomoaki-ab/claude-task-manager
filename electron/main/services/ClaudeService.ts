@@ -1,7 +1,7 @@
 import { Notification } from 'electron'
 import type { TerminalService } from './TerminalService'
 import type { ContextLineService } from './ContextLineService'
-import type { AppSettings, ContextInfo } from '../../../src/types/ipc'
+import type { AppSettings, ContextInfo, LaunchMode } from '../../../src/types/ipc'
 
 export type ContextUpdateCallback = (info: ContextInfo) => void
 
@@ -28,11 +28,16 @@ export class ClaudeService {
     })
   }
 
-  start(taskId: string, workdir: string, prompt?: string, dangerously?: boolean, planMode?: boolean, cols?: number, rows?: number, sessionId?: string, resumeSessionId?: string): void {
+  start(taskId: string, workdir: string, prompt?: string, launchMode?: LaunchMode, planMode?: boolean, cols?: number, rows?: number, sessionId?: string, resumeSessionId?: string): void {
     this.terminalService.start(taskId, workdir, cols ?? 120, rows ?? 30, { CLAUDE_TASK_ID: taskId })
     let claudeArgs = ''
-    if (dangerously) claudeArgs += ' --dangerously-skip-permissions'
-    if (planMode) claudeArgs += ' --permission-mode plan'
+    if (planMode) {
+      claudeArgs += ' --permission-mode plan'
+    } else if (launchMode === 'dangerously-skip-permissions') {
+      claudeArgs += ' --dangerously-skip-permissions'
+    } else if (launchMode === 'auto') {
+      claudeArgs += ' --permission-mode auto'
+    }
     if (resumeSessionId) claudeArgs += ` --resume ${resumeSessionId}`
     else if (sessionId) claudeArgs += ` --session-id ${sessionId}`
     const claudeCmd = `claude${claudeArgs}\n`

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { RuntimeTask, TaskType, Task, RuntimeTaskState, DistributiveOmit } from '../types/task'
+import type { LaunchMode } from '../types/ipc'
 import { useTerminalStore } from './terminalStore'
 
 type TaskStore = {
@@ -14,8 +15,8 @@ type TaskStore = {
   archiveTask: (id: string) => Promise<void>
   archiveAllDone: () => Promise<void>
   restoreArchived: (id: string) => Promise<void>
-  startTask: (taskId: string) => Promise<void>
-  resumeTask: (taskId: string) => Promise<void>
+  startTask: (taskId: string, launchMode?: LaunchMode) => Promise<void>
+  resumeTask: (taskId: string, launchMode?: LaunchMode) => Promise<void>
   setSearchQuery: (q: string) => void
   setTypeFilters: (types: TaskType[]) => void
 }
@@ -80,7 +81,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     await get().fetchTasks()
   },
 
-  startTask: async (taskId) => {
+  startTask: async (taskId, launchMode) => {
     const { tasks } = get()
     const task = tasks.find((t) => t.id === taskId)
     if (!task) return
@@ -89,13 +90,13 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     const prompt = task.prompt
     const { panelCols, panelRows } = useTerminalStore.getState()
 
-    await window.api.claude.start(taskId, workdir, prompt, panelCols, panelRows)
+    await window.api.claude.start(taskId, workdir, prompt, panelCols, panelRows, launchMode)
     await get().fetchTasks()
   },
 
-  resumeTask: async (taskId) => {
+  resumeTask: async (taskId, launchMode) => {
     const { panelCols, panelRows } = useTerminalStore.getState()
-    await window.api.claude.resume(taskId, panelCols, panelRows)
+    await window.api.claude.resume(taskId, panelCols, panelRows, launchMode)
     await get().fetchTasks()
   },
 

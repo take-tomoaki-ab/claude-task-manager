@@ -6,8 +6,16 @@ import type { TaskService } from '../services/TaskService'
 import type { GitService } from '../services/GitService'
 import type { TerminalService } from '../services/TerminalService'
 import type { StopHookService } from '../services/StopHookService'
-import type { AppSettings } from '../../../src/types/ipc'
+import type { AppSettings, LaunchMode } from '../../../src/types/ipc'
 import type { Task } from '../../../src/types/task'
+
+function resolveLaunchMode(override: LaunchMode | undefined, planMode: boolean, settings: AppSettings): LaunchMode {
+  if (planMode) return 'default'
+  if (override) return override
+  if (settings.useDangerouslySkipPermissions) return 'dangerously-skip-permissions'
+  if (settings.useAutoMode) return 'auto'
+  return 'default'
+}
 
 function interpolateTemplate(template: string, task: Task): string {
   const vars: Record<string, string> = { title: task.title }
@@ -33,7 +41,7 @@ export function registerClaudeHandlers(
     'claude:start',
     async (
       _,
-      { taskId, workdir, prompt, cols, rows }: { taskId: string; workdir: string; prompt?: string; cols?: number; rows?: number }
+      { taskId, workdir, prompt, cols, rows, launchMode }: { taskId: string; workdir: string; prompt?: string; cols?: number; rows?: number; launchMode?: LaunchMode }
     ) => {
       try {
         const tasks = taskService.list()
@@ -91,9 +99,9 @@ export function registerClaudeHandlers(
           const rawPrompt = prompt || task.prompt || settings.promptTemplates?.[task.type]
           const taskPrompt = rawPrompt ? interpolateTemplate(rawPrompt, task) : undefined
           const planMode = task.type === 'research'
-          const dangerously = !planMode && (settings.useDangerouslySkipPermissions ?? false)
+          const effectiveLaunchMode = resolveLaunchMode(launchMode, planMode, settings)
           const sessionId = randomUUID()
-          claudeService.start(taskId, resolvedWorkdir, taskPrompt, dangerously, planMode, cols, rows, sessionId)
+          claudeService.start(taskId, resolvedWorkdir, taskPrompt, effectiveLaunchMode, planMode, cols, rows, sessionId)
           taskService.update(taskId, { sessionId })
 
           // Stop Hook: タスク完了通知コールバック登録（自動遷移しない）
@@ -162,7 +170,7 @@ export function registerClaudeHandlers(
     'claude:resume',
     async (
       _,
-      { taskId, cols, rows }: { taskId: string; cols?: number; rows?: number }
+      { taskId, cols, rows, launchMode }: { taskId: string; cols?: number; rows?: number; launchMode?: LaunchMode }
     ) => {
       try {
         const tasks = taskService.list()
@@ -229,8 +237,8 @@ export function registerClaudeHandlers(
           getWindow()?.webContents.send('terminal:reset', taskId)
 
           const planMode = task.type === 'research'
-          const dangerously = !planMode && (settings.useDangerouslySkipPermissions ?? false)
-          claudeService.start(taskId, resolvedWorkdir, undefined, dangerously, planMode, cols, rows, undefined, sessionId)
+          const effectiveLaunchMode = resolveLaunchMode(launchMode, planMode, settings)
+          claudeService.start(taskId, resolvedWorkdir, undefined, effectiveLaunchMode, planMode, cols, rows, undefined, sessionId)
 
           if (stopHookService) {
             stopHookService.onTaskComplete(taskId, async () => {

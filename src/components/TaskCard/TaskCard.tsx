@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { RuntimeTask } from '../../types/task'
+import type { LaunchMode } from '../../types/ipc'
 import { useTaskStore } from '../../stores/taskStore'
 import { useTerminalStore } from '../../stores/terminalStore'
 import ContextMeter from '../ContextMeter/ContextMeter'
@@ -20,6 +21,75 @@ const TYPE_COLORS: Record<string, string> = {
   bugfix: 'bg-green-600',
   research: 'bg-cyan-600',
   chore: 'bg-gray-600'
+}
+
+const LAUNCH_MODE_LABELS: Record<LaunchMode, string> = {
+  'default': '通常',
+  'auto': 'Auto',
+  'dangerously-skip-permissions': 'Dangerously',
+}
+
+type SplitButtonProps = {
+  label: string
+  disabled?: boolean
+  disabledTitle?: string
+  colorClass: string
+  onClickDefault: () => void
+  onClickMode: (mode: LaunchMode) => void
+  onKeyDown: (e: React.KeyboardEvent) => void
+}
+
+function SplitButton({ label, disabled, disabledTitle, colorClass, onClickDefault, onClickMode, onKeyDown }: SplitButtonProps) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const disabledColor = 'bg-gray-600 text-gray-400 cursor-not-allowed'
+  const base = disabled ? disabledColor : colorClass
+
+  return (
+    <div ref={ref} className="relative flex">
+      <button
+        onClick={disabled ? undefined : onClickDefault}
+        onKeyDown={onKeyDown}
+        disabled={disabled}
+        title={disabled ? disabledTitle : undefined}
+        className={`px-3 py-1 rounded-l text-xs font-medium ${base}`}
+      >
+        {label}
+      </button>
+      <button
+        onClick={disabled ? undefined : () => setOpen((v) => !v)}
+        onKeyDown={onKeyDown}
+        disabled={disabled}
+        className={`px-1.5 py-1 rounded-r border-l border-black/20 text-xs ${base}`}
+        aria-label="起動モードを選択"
+      >
+        ▾
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-gray-900 border border-gray-700 rounded shadow-lg min-w-max">
+          {(Object.entries(LAUNCH_MODE_LABELS) as [LaunchMode, string][]).map(([mode, modeLabel]) => (
+            <button
+              key={mode}
+              onClick={() => { setOpen(false); onClickMode(mode) }}
+              className="block w-full text-left px-3 py-1.5 text-xs text-gray-200 hover:bg-gray-700 whitespace-nowrap"
+            >
+              {modeLabel}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function DoneDetail({ task, onButtonKeyDown }: { task: RuntimeTask; onButtonKeyDown: (e: React.KeyboardEvent) => void }) {
@@ -78,10 +148,10 @@ export default function TaskCard({ task, hasFreePane = true, onEdit, onNavigate 
   const depBlocked = depTask ? depTask.status !== 'done' : false
   const paneBlocked = task.type !== 'chore' && !hasFreePane
 
-  const handleStart = async () => {
+  const handleStart = async (launchMode?: LaunchMode) => {
     setStartError(null)
     try {
-      await startTask(task.id)
+      await startTask(task.id, launchMode)
       openTerminal(task.id)
     } catch (err) {
       setStartError((err as Error).message)
@@ -102,10 +172,10 @@ export default function TaskCard({ task, hasFreePane = true, onEdit, onNavigate 
     await updateTask(task.id, { status: 'will_do', completedAt: null, startedAt: null })
   }
 
-  const handleResume = async () => {
+  const handleResume = async (launchMode?: LaunchMode) => {
     setStartError(null)
     try {
-      await resumeTask(task.id)
+      await resumeTask(task.id, launchMode)
       openTerminal(task.id)
     } catch (err) {
       setStartError((err as Error).message)
@@ -181,23 +251,15 @@ export default function TaskCard({ task, hasFreePane = true, onEdit, onNavigate 
             )}
 
             <div className="flex items-center gap-2 mt-2">
-              <button
-                onClick={handleStart}
-                onKeyDown={handleButtonKeyDown}
+              <SplitButton
+                label="開始"
                 disabled={depBlocked || paneBlocked}
-                className={`px-3 py-1 rounded text-xs font-medium ${
-                  depBlocked || paneBlocked
-                    ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                }`}
-                title={
-                  depBlocked ? '依存タスクが未完了です' :
-                  paneBlocked ? '空きペインがありません' :
-                  undefined
-                }
-              >
-                開始
-              </button>
+                disabledTitle={depBlocked ? '依存タスクが未完了です' : paneBlocked ? '空きペインがありません' : undefined}
+                colorClass="bg-blue-600 hover:bg-blue-700 text-white"
+                onClickDefault={() => handleStart()}
+                onClickMode={(mode) => handleStart(mode)}
+                onKeyDown={handleButtonKeyDown}
+              />
               <button
                 onClick={handleComplete}
                 onKeyDown={handleButtonKeyDown}
@@ -347,14 +409,15 @@ export default function TaskCard({ task, hasFreePane = true, onEdit, onNavigate 
                 </button>
               )}
               {'sessionId' in task && task.sessionId && (
-                <button
-                  onClick={handleResume}
-                  onKeyDown={handleButtonKeyDown}
+                <SplitButton
+                  label="再開"
                   disabled={paneBlocked}
-                  className="px-3 py-1 rounded text-xs bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  再開
-                </button>
+                  disabledTitle="空きペインがありません"
+                  colorClass="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  onClickDefault={() => handleResume()}
+                  onClickMode={(mode) => handleResume(mode)}
+                  onKeyDown={handleButtonKeyDown}
+                />
               )}
               <button
                 onClick={handleArchive}

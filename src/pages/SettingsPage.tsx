@@ -743,8 +743,20 @@ export default function SettingsPage() {
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
+              checked={settings.useAutoMode ?? false}
+              onChange={(e) => setSettings((prev) => ({ ...prev, useAutoMode: e.target.checked, useDangerouslySkipPermissions: e.target.checked ? false : prev.useDangerouslySkipPermissions }))}
+              className="w-4 h-4 rounded"
+            />
+            <span className="text-sm text-gray-300">
+              <span className="font-mono text-blue-400">--permission-mode auto</span> で起動する
+            </span>
+          </label>
+          <p className="text-xs text-gray-500 mt-1 ml-7">有効にすると操作を自動承認して Claude が実行します（dangerously より安全）</p>
+          <label className="flex items-center gap-3 cursor-pointer mt-2">
+            <input
+              type="checkbox"
               checked={settings.useDangerouslySkipPermissions ?? false}
-              onChange={(e) => setSettings((prev) => ({ ...prev, useDangerouslySkipPermissions: e.target.checked }))}
+              onChange={(e) => setSettings((prev) => ({ ...prev, useDangerouslySkipPermissions: e.target.checked, useAutoMode: e.target.checked ? false : prev.useAutoMode }))}
               className="w-4 h-4 rounded"
             />
             <span className="text-sm text-gray-300">
