@@ -56,7 +56,7 @@ export default function PaneStatusSidebar() {
   }
 
   const getActiveTask = (paneId: string, repoId: string) => {
-    return tasks.find((t) => t.pane === paneId && t.repoId === repoId && t.status === 'doing')
+    return tasks.find((t) => t.pane === paneId && (t.repoId ?? repos[0]?.id) === repoId && t.status === 'doing')
   }
 
   const shortenPath = (p: string): string => {
