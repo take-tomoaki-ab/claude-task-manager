@@ -52,13 +52,20 @@ export class GitService {
       // ローカルに存在 → そのまま切り替え
       await git.checkout(branch)
     } else if (baseBranch) {
-      // origin/<baseBranch> が存在すればそちらを優先、なければローカルから
       const allBranches = await git.branch(['-a'])
+      const hasLocal = baseBranch in allBranches.branches
       const remoteBase = `remotes/origin/${baseBranch}`
-      const startPoint = allBranches.all.includes(remoteBase)
-        ? `origin/${baseBranch}`
-        : baseBranch
-      await git.checkoutBranch(branch, startPoint)
+      const hasRemote = allBranches.all.includes(remoteBase)
+      if (hasLocal) {
+        // ローカルのbaseBranchから切る（tracking設定なし）= git sw -c branch base
+        await git.raw(['switch', '-c', branch, baseBranch])
+      } else if (hasRemote) {
+        // リモートのみ存在する場合は --no-track で作成
+        await git.raw(['switch', '-c', branch, '--no-track', `origin/${baseBranch}`])
+      } else {
+        // どちらも存在しない場合はHEADから作成
+        await git.checkoutLocalBranch(branch)
+      }
     } else {
       // 現在のHEADから新規作成
       await git.checkoutLocalBranch(branch)
