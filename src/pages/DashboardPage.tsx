@@ -95,7 +95,7 @@ export default function DashboardPage() {
   // タスクごとに、そのリポジトリに空きペインがあるか判定
   // repoId:paneId の複合キーで管理して別リポジトリの同名paneを区別する
   const occupiedPaneKeys = new Set(
-    tasks.filter((t) => t.status === 'doing' && t.pane).map((t) => `${t.repoId ?? ''}:${t.pane}`)
+    tasks.filter((t) => t.status === 'doing' && t.pane).map((t) => `${t.repoId ?? repos[0]?.id ?? ''}:${t.pane}`)
   )
   const hasFreePaneForTask = (task: RuntimeTask): boolean => {
     if (task.type === 'chore') return true
