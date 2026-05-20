@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { RuntimeTask } from '../../types/task'
 import type { LaunchMode } from '../../types/ipc'
 import { useTaskStore } from '../../stores/taskStore'
@@ -10,6 +11,7 @@ import PRStatusBadge from './PRStatusBadge'
 type Props = {
   task: RuntimeTask
   hasFreePane?: boolean
+  defaultLaunchMode?: LaunchMode
   onEdit?: (task: RuntimeTask) => void
   onNavigate?: (taskId: string, dir: 'up' | 'down' | 'left' | 'right') => void
 }
@@ -23,30 +25,38 @@ const TYPE_COLORS: Record<string, string> = {
   chore: 'bg-gray-600'
 }
 
-const LAUNCH_MODE_LABELS: Record<LaunchMode, string> = {
-  'default': '通常',
-  'auto': 'Auto',
-  'dangerously-skip-permissions': 'Dangerously',
-}
+const ALL_LAUNCH_MODES: LaunchMode[] = ['normal', 'auto', 'bypass', 'plan']
 
 type SplitButtonProps = {
   label: string
   disabled?: boolean
   disabledTitle?: string
   colorClass: string
+  currentMode: LaunchMode
   onClickDefault: () => void
   onClickMode: (mode: LaunchMode) => void
   onKeyDown: (e: React.KeyboardEvent) => void
 }
 
-function SplitButton({ label, disabled, disabledTitle, colorClass, onClickDefault, onClickMode, onKeyDown }: SplitButtonProps) {
+function SplitButton({ label, disabled, disabledTitle, colorClass, currentMode, onClickDefault, onClickMode, onKeyDown }: SplitButtonProps) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0 })
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) return
+    const r = triggerRef.current.getBoundingClientRect()
+    setDropPos({ top: r.bottom + 4, left: r.left })
+  }, [open])
 
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (dropRef.current && !dropRef.current.contains(e.target as Node) &&
+          triggerRef.current && !triggerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -56,7 +66,7 @@ function SplitButton({ label, disabled, disabledTitle, colorClass, onClickDefaul
   const base = disabled ? disabledColor : colorClass
 
   return (
-    <div ref={ref} className="relative flex">
+    <div className="flex">
       <button
         onClick={disabled ? undefined : onClickDefault}
         onKeyDown={onKeyDown}
@@ -64,9 +74,10 @@ function SplitButton({ label, disabled, disabledTitle, colorClass, onClickDefaul
         title={disabled ? disabledTitle : undefined}
         className={`px-3 py-1 rounded-l text-xs font-medium ${base}`}
       >
-        {label}
+        {label}（{currentMode}）
       </button>
       <button
+        ref={triggerRef}
         onClick={disabled ? undefined : () => setOpen((v) => !v)}
         onKeyDown={onKeyDown}
         disabled={disabled}
@@ -75,18 +86,27 @@ function SplitButton({ label, disabled, disabledTitle, colorClass, onClickDefaul
       >
         ▾
       </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-gray-900 border border-gray-700 rounded shadow-lg min-w-max">
-          {(Object.entries(LAUNCH_MODE_LABELS) as [LaunchMode, string][]).map(([mode, modeLabel]) => (
+      {open && createPortal(
+        <div
+          ref={dropRef}
+          style={{ position: 'fixed', top: dropPos.top, left: dropPos.left, zIndex: 9999 }}
+          className="bg-gray-900 border border-gray-700 rounded shadow-xl min-w-max"
+        >
+          {ALL_LAUNCH_MODES.map((mode) => (
             <button
               key={mode}
               onClick={() => { setOpen(false); onClickMode(mode) }}
-              className="block w-full text-left px-3 py-1.5 text-xs text-gray-200 hover:bg-gray-700 whitespace-nowrap"
+              className={`block w-full text-left px-4 py-1.5 text-xs whitespace-nowrap ${
+                mode === currentMode
+                  ? 'text-white bg-gray-700'
+                  : 'text-gray-300 hover:bg-gray-700'
+              }`}
             >
-              {modeLabel}
+              {mode}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
@@ -130,7 +150,7 @@ function DoneDetail({ task, onButtonKeyDown }: { task: RuntimeTask; onButtonKeyD
   )
 }
 
-export default function TaskCard({ task, hasFreePane = true, onEdit, onNavigate }: Props) {
+export default function TaskCard({ task, hasFreePane = true, defaultLaunchMode = 'normal', onEdit, onNavigate }: Props) {
   const tasks = useTaskStore((s) => s.tasks)
   const startTask = useTaskStore((s) => s.startTask)
   const resumeTask = useTaskStore((s) => s.resumeTask)
@@ -147,6 +167,7 @@ export default function TaskCard({ task, hasFreePane = true, onEdit, onNavigate 
   const depTask = task.depends_on ? tasks.find((t) => t.id === task.depends_on) : null
   const depBlocked = depTask ? depTask.status !== 'done' : false
   const paneBlocked = task.type !== 'chore' && !hasFreePane
+  const effectiveDefaultMode: LaunchMode = task.type === 'research' ? 'plan' : defaultLaunchMode
 
   const handleStart = async (launchMode?: LaunchMode) => {
     setStartError(null)
@@ -256,7 +277,8 @@ export default function TaskCard({ task, hasFreePane = true, onEdit, onNavigate 
                 disabled={depBlocked || paneBlocked}
                 disabledTitle={depBlocked ? '依存タスクが未完了です' : paneBlocked ? '空きペインがありません' : undefined}
                 colorClass="bg-blue-600 hover:bg-blue-700 text-white"
-                onClickDefault={() => handleStart()}
+                currentMode={effectiveDefaultMode}
+                onClickDefault={() => handleStart(effectiveDefaultMode)}
                 onClickMode={(mode) => handleStart(mode)}
                 onKeyDown={handleButtonKeyDown}
               />
@@ -414,7 +436,8 @@ export default function TaskCard({ task, hasFreePane = true, onEdit, onNavigate 
                   disabled={paneBlocked}
                   disabledTitle="空きペインがありません"
                   colorClass="bg-indigo-600 hover:bg-indigo-700 text-white"
-                  onClickDefault={() => handleResume()}
+                  currentMode={effectiveDefaultMode}
+                  onClickDefault={() => handleResume(effectiveDefaultMode)}
                   onClickMode={(mode) => handleResume(mode)}
                   onKeyDown={handleButtonKeyDown}
                 />

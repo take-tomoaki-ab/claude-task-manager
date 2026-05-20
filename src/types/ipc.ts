@@ -22,7 +22,7 @@ export type RepoConfig = {
 }
 
 // Claude起動モード
-export type LaunchMode = 'default' | 'auto' | 'dangerously-skip-permissions'
+export type LaunchMode = 'normal' | 'auto' | 'bypass' | 'plan'
 
 // アプリ設定
 export type AppSettings = {

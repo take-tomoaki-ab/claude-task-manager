@@ -9,12 +9,12 @@ import type { StopHookService } from '../services/StopHookService'
 import type { AppSettings, LaunchMode } from '../../../src/types/ipc'
 import type { Task } from '../../../src/types/task'
 
-function resolveLaunchMode(override: LaunchMode | undefined, planMode: boolean, settings: AppSettings): LaunchMode {
-  if (planMode) return 'default'
+function resolveLaunchMode(override: LaunchMode | undefined, isResearch: boolean, settings: AppSettings): LaunchMode {
   if (override) return override
-  if (settings.useDangerouslySkipPermissions) return 'dangerously-skip-permissions'
+  if (isResearch) return 'plan'
+  if (settings.useDangerouslySkipPermissions) return 'bypass'
   if (settings.useAutoMode) return 'auto'
-  return 'default'
+  return 'normal'
 }
 
 function interpolateTemplate(template: string, task: Task): string {
@@ -98,10 +98,9 @@ export function registerClaudeHandlers(
           // Start Claude
           const rawPrompt = prompt || task.prompt || settings.promptTemplates?.[task.type]
           const taskPrompt = rawPrompt ? interpolateTemplate(rawPrompt, task) : undefined
-          const planMode = task.type === 'research'
-          const effectiveLaunchMode = resolveLaunchMode(launchMode, planMode, settings)
+          const effectiveLaunchMode = resolveLaunchMode(launchMode, task.type === 'research', settings)
           const sessionId = randomUUID()
-          claudeService.start(taskId, resolvedWorkdir, taskPrompt, effectiveLaunchMode, planMode, cols, rows, sessionId)
+          claudeService.start(taskId, resolvedWorkdir, taskPrompt, effectiveLaunchMode, cols, rows, sessionId)
           taskService.update(taskId, { sessionId })
 
           // Stop Hook: タスク完了通知コールバック登録（自動遷移しない）
@@ -236,9 +235,8 @@ export function registerClaudeHandlers(
         try {
           getWindow()?.webContents.send('terminal:reset', taskId)
 
-          const planMode = task.type === 'research'
-          const effectiveLaunchMode = resolveLaunchMode(launchMode, planMode, settings)
-          claudeService.start(taskId, resolvedWorkdir, undefined, effectiveLaunchMode, planMode, cols, rows, undefined, sessionId)
+          const effectiveLaunchMode = resolveLaunchMode(launchMode, task.type === 'research', settings)
+          claudeService.start(taskId, resolvedWorkdir, undefined, effectiveLaunchMode, cols, rows, undefined, sessionId)
 
           if (stopHookService) {
             stopHookService.onTaskComplete(taskId, async () => {
