@@ -37,7 +37,7 @@ export class McpServerService {
                 baseBranch: { type: 'string', description: '分岐元ブランチ名' },
                 ticket: { type: 'string', description: 'WrikeチケットURL' },
                 prompt: { type: 'string', description: 'Claude に渡すプロンプト' },
-                repoId: { type: 'string', description: 'リポジトリID（設定画面で確認可能）' },
+                repoId: { type: 'string', description: 'リポジトリID（chore以外のタイプでは必須。list_repos で確認可能）' },
                 url: { type: 'string', description: 'GitHub PR URL（type が review の場合は必須）' },
                 output: { type: 'string', description: '出力先パス（type が design の場合は必須）' },
                 directory: { type: 'string', description: '作業ディレクトリ（type が chore の場合は必須）' },
@@ -110,6 +110,9 @@ export class McpServerService {
                 status?: Task['status']
                 pane?: string
                 [key: string]: unknown
+              }
+              if (type !== 'chore' && !rest.repoId) {
+                throw new Error('repoId is required for non-chore tasks. Use list_repos to get valid repo IDs.')
               }
               const task = taskService.create({
                 type,

@@ -59,10 +59,11 @@ export function registerClaudeHandlers(
             throw new Error('NO_REPO_ASSIGNED')
           }
           // 同一リポジトリ内のdoingタスクのみで占有判定（別リポジトリの同名paneを除外）
+          // repoId未設定のタスクはrepos[0]に属するとみなす（MCP経由作成タスクの互換性）
           const occupiedPaneIds = new Set(
             tasks
               .filter((t) => t.id !== taskId && t.status === 'doing' && t.pane &&
-                (('repoId' in t ? t.repoId : undefined) === repo.id))
+                (('repoId' in t ? (t as { repoId?: string }).repoId : undefined) ?? settings.repos[0]?.id) === repo.id)
               .map((t) => t.pane)
           )
           const freePaneConfig = repo.panes.find((p) => !occupiedPaneIds.has(p.id))
@@ -190,10 +191,11 @@ export function registerClaudeHandlers(
             throw new Error('NO_REPO_ASSIGNED')
           }
           // 同一リポジトリ内のdoingタスクのみで占有判定（別リポジトリの同名paneを除外）
+          // repoId未設定のタスクはrepos[0]に属するとみなす（MCP経由作成タスクの互換性）
           const occupiedPaneIds = new Set(
             tasks
               .filter((t) => t.id !== taskId && t.status === 'doing' && t.pane &&
-                (('repoId' in t ? t.repoId : undefined) === repo.id))
+                (('repoId' in t ? (t as { repoId?: string }).repoId : undefined) ?? settings.repos[0]?.id) === repo.id)
               .map((t) => t.pane)
           )
           // セッション再開時は元のpaneを優先（claude --resume は起動ディレクトリでセッションを検索するため）
