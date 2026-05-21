@@ -10,7 +10,48 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
-    "rebuild": "electron-rebuild -f -w better-sqlite3,node-pty"
+    "rebuild": "electron-rebuild -f -w better-sqlite3,node-pty",
+    "dist:mac-arm64": "npm run build && electron-builder --mac --arm64",
+    "dist:mac-x64": "npm run build && electron-builder --mac --x64",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "dist": "npm run build && electron-builder --mac --win"
+  },
+  "build": {
+    "appId": "com.take18.toride",
+    "productName": "ToRide",
+    "copyright": "Copyright © 2024 Take18",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "out/**/*",
+      "!out/**/*.map"
+    ],
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.developer-tools",
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] },
+        { "target": "zip", "arch": ["arm64", "x64"] }
+      ]
+    },
+    "dmg": {
+      "title": "ToRide ${version}"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",
@@ -22,6 +63,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "electron": "^28.3.3",
+    "electron-builder": "^26.8.1",
     "electron-vite": "^2.3.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
