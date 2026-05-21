@@ -11,37 +11,50 @@ export type GitHubPullRequest = {
 export class GitHubService {
   async fetchReviewRequestedPRs(username: string, pat: string): Promise<GitHubPullRequest[]> {
     const query = `is:pr is:open review-requested:${username} archived:false`
-    const url = `https://api.github.com/search/issues?q=${encodeURIComponent(query)}&per_page=50`
+    const headers = {
+      Authorization: `Bearer ${pat}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    }
 
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${pat}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
+    type RawItem = {
+      number: number
+      title: string
+      html_url: string
+      repository_url: string
+      draft: boolean
+      state: string
+    }
+
+    const allItems: RawItem[] = []
+    const perPage = 100
+    let page = 1
+
+    while (true) {
+      const url = `https://api.github.com/search/issues?q=${encodeURIComponent(query)}&per_page=${perPage}&page=${page}`
+      const res = await fetch(url, { headers })
+
+      if (!res.ok) {
+        const body = await res.text()
+        throw new Error(`GitHub API error ${res.status}: ${body}`)
       }
-    })
 
-    if (!res.ok) {
-      const body = await res.text()
-      throw new Error(`GitHub API error ${res.status}: ${body}`)
+      const data = (await res.json()) as { total_count?: number; items?: RawItem[] }
+
+      if (!data.items) {
+        throw new Error(`GitHub API returned unexpected response (items missing)`)
+      }
+
+      allItems.push(...data.items)
+
+      // 取得件数が total_count に達したか、1ページ未満なら終了
+      if (data.items.length < perPage || allItems.length >= (data.total_count ?? 0)) {
+        break
+      }
+      page++
     }
 
-    const data = (await res.json()) as {
-      items?: Array<{
-        number: number
-        title: string
-        html_url: string
-        repository_url: string
-        draft: boolean
-        state: string
-      }>
-    }
-
-    if (!data.items) {
-      throw new Error(`GitHub API returned unexpected response (items missing)`)
-    }
-
-    return data.items.map((item) => {
+    return allItems.map((item) => {
       // repository_url: https://api.github.com/repos/owner/repo
       const parts = item.repository_url.split('/')
       const repositoryFullName = `${parts[parts.length - 2]}/${parts[parts.length - 1]}`
