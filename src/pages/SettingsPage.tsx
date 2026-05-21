@@ -387,6 +387,8 @@ export default function SettingsPage() {
     try {
       const result = await window.api.github.syncPRs()
       setPrSyncResult(result)
+    } catch (e) {
+      setToast({ message: `PR同期に失敗しました: ${(e as Error).message}`, type: 'error' })
     } finally {
       setPrSyncing(false)
     }

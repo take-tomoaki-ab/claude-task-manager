@@ -27,7 +27,7 @@ export class GitHubService {
     }
 
     const data = (await res.json()) as {
-      items: Array<{
+      items?: Array<{
         number: number
         title: string
         html_url: string
@@ -35,6 +35,10 @@ export class GitHubService {
         draft: boolean
         state: string
       }>
+    }
+
+    if (!data.items) {
+      throw new Error(`GitHub API returned unexpected response (items missing)`)
     }
 
     return data.items.map((item) => {
