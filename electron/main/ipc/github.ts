@@ -30,14 +30,7 @@ export async function syncReviewPRs(
     return { created: 0, total: 0 }
   }
 
-  const searchPRs = await gitHubService.fetchReviewRequestedPRs(githubUsername, githubPat)
-
-  // Search API の取りこぼしを Notifications API で補完
-  const notifPRs = await gitHubService
-    .fetchPRsFromNotifications(githubUsername, githubPat, new Set(searchPRs.map(p => p.html_url)))
-    .catch(() => [])
-
-  const prs = [...searchPRs, ...notifPRs]
+  const prs = await gitHubService.fetchReviewRequestedPRs(githubUsername, githubPat)
 
   // will_do / doing の review タスクの url のみ収集（done・アーカイブは再取得対象）
   const existingTasks = taskService.list()
