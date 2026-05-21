@@ -71,6 +71,92 @@ export class GitHubService {
     })
   }
 
+  /**
+   * Notifications API 経由でレビュー依頼PRを補完取得する。
+   * Search API が拾い損ねたPRをカバーするためのサプリメント。
+   * knownUrls に含まれる URL は検証をスキップする。
+   */
+  async fetchPRsFromNotifications(
+    username: string,
+    pat: string,
+    knownUrls: Set<string>
+  ): Promise<GitHubPullRequest[]> {
+    const headers = {
+      Authorization: `Bearer ${pat}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    }
+
+    // 直近90日の通知を取得（それ以上古いレビュー依頼は対象外）
+    const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+    const res = await fetch(
+      `https://api.github.com/notifications?all=true&since=${since}&per_page=100`,
+      { headers }
+    )
+    if (!res.ok) return []
+
+    type NotifItem = { reason: string; subject: { type: string; url: string } }
+    const items = await res.json() as NotifItem[]
+
+    // review_requested な PullRequest 通知のみ、かつ Search 結果にない URL だけ
+    const candidateUrls = items
+      .filter(n => n.reason === 'review_requested' && n.subject?.type === 'PullRequest')
+      .map(n =>
+        n.subject.url
+          .replace('https://api.github.com/repos/', 'https://github.com/')
+          .replace('/pulls/', '/pull/')
+      )
+      .filter(url => !knownUrls.has(url))
+
+    // 重複排除
+    const uniqueUrls = [...new Set(candidateUrls)]
+
+    const result: GitHubPullRequest[] = []
+    for (const htmlUrl of uniqueUrls) {
+      try {
+        const pr = await this.verifyPendingReview(htmlUrl, username, headers)
+        if (pr) result.push(pr)
+      } catch {
+        // 個別PRの検証失敗は無視
+      }
+    }
+    return result
+  }
+
+  private async verifyPendingReview(
+    htmlUrl: string,
+    username: string,
+    headers: Record<string, string>
+  ): Promise<GitHubPullRequest | null> {
+    const match = htmlUrl.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/)
+    if (!match) return null
+    const [, owner, repo, number] = match
+    const base = `https://api.github.com/repos/${owner}/${repo}`
+
+    // PRがまだopenか確認
+    const prRes = await fetch(`${base}/pulls/${number}`, { headers })
+    if (!prRes.ok) return null
+    const pr = await prRes.json()
+    if (pr.state !== 'open') return null
+
+    // 自分がまだ requested_reviewers に含まれているか確認
+    const reviewersRes = await fetch(`${base}/pulls/${number}/requested_reviewers`, { headers })
+    if (!reviewersRes.ok) return null
+    const { users } = await reviewersRes.json() as { users: Array<{ login: string }> }
+    const isRequested = users?.some(u => u.login.toLowerCase() === username.toLowerCase())
+    if (!isRequested) return null
+
+    return {
+      number: pr.number,
+      title: pr.title,
+      html_url: pr.html_url,
+      repositoryName: repo,
+      repositoryFullName: `${owner}/${repo}`,
+      draft: pr.draft ?? false,
+      state: pr.state
+    }
+  }
+
   async fetchPRStatus(
     url: string,
     pat: string
