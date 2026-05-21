@@ -23,7 +23,8 @@ export async function syncReviewPRs(
   getWindow: () => BrowserWindow | null
 ): Promise<{ created: number; total: number }> {
   const settings = getSettings()
-  const { githubPat, githubUsername } = settings
+  const githubPat = settings.githubPat?.trim()
+  const githubUsername = settings.githubUsername?.trim()
 
   if (!githubPat || !githubUsername) {
     return { created: 0, total: 0 }

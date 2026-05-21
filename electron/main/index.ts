@@ -88,7 +88,11 @@ function getSettings(): AppSettings {
       const encrypted = Buffer.from(settings.githubPat, 'base64')
       settings.githubPat = safeStorage.decryptString(encrypted)
     } catch {
-      // Decryption failed, return as-is
+      // Decryption failed (e.g., app was renamed and safeStorage key changed).
+      // Clear to undefined so the user is prompted to re-enter rather than
+      // using the garbage encrypted bytes as the actual token.
+      settings.githubPat = undefined
+      console.warn('[settings] GitHub PAT decryption failed - cleared. User needs to re-enter.')
     }
   }
 
@@ -103,7 +107,9 @@ function getSettings(): AppSettings {
             const encrypted = Buffer.from(ps[field.key], 'base64')
             ps[field.key] = safeStorage.decryptString(encrypted)
           } catch {
-            // Decryption failed, return as-is
+            // Decryption failed - clear so the field is treated as unset
+            ps[field.key] = ''
+            console.warn(`[settings] Plugin ${plugin.id}.${field.key} decryption failed - cleared.`)
           }
         }
       }
