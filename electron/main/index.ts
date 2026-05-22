@@ -25,6 +25,9 @@ import { registerGitHubHandlers, syncReviewPRs } from './ipc/github'
 import { registerTicketHandlers } from './ipc/ticket'
 import type { AppSettings } from '../../src/types/ipc'
 
+// GUIアプリとして起動した場合のベースラインPATH拡張（シェルプロファイルが読まれないため）
+process.env.PATH = `/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH || ''}`
+
 // bg:// カスタムプロトコルをセキュアとして登録（app.whenReady より前に必要）
 protocol.registerSchemesAsPrivileged([
   { scheme: 'bg', privileges: { secure: true, standard: true, supportFetchAPI: true } }
@@ -159,6 +162,18 @@ app.whenReady().then(() => {
   // 起動時にdoingタスクをwill_doに戻す（再起動でPTYセッションが消えるため）
   db.prepare(`UPDATE tasks SET status = 'will_do' WHERE status = 'doing'`).run()
   db.prepare(`DELETE FROM task_runtime`).run()
+
+  // 設定の extraPaths を PATH に追加（git hooks等の子プロセスに引き継ぐため）
+  {
+    const row = db.prepare(`SELECT value FROM app_settings WHERE key = ?`).get('settings') as { value: string } | undefined
+    if (row) {
+      const raw = JSON.parse(row.value) as { extraPaths?: string[] }
+      const extras = (raw.extraPaths ?? []).filter(Boolean)
+      if (extras.length > 0) {
+        process.env.PATH = `${extras.join(':')}:${process.env.PATH || ''}`
+      }
+    }
+  }
 
   // 設定保存ヘルパー（暗号化 + DB保存）
   function saveSettings(merged: AppSettings): void {
