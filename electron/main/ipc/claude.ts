@@ -205,14 +205,14 @@ export function registerClaudeHandlers(
                 (('repoId' in t ? (t as { repoId?: string }).repoId : undefined) ?? settings.repos[0]?.id) === repo.id)
               .map((t) => t.pane)
           )
-          // 元のpaneが空いていれば優先、塞がっていれば同一リポジトリの他の空きpaneを使用
+          // claude --resume はCWDでセッションを検索するため、元のpaneと同じpathのpaneのみ対象
           const originalPaneConfig = task.pane
             ? repo.panes.find((p) => p.id === task.pane)
             : null
-          const freePaneConfig =
-            originalPaneConfig && !occupiedPaneIds.has(originalPaneConfig.id)
-              ? originalPaneConfig
-              : repo.panes.find((p) => !occupiedPaneIds.has(p.id))
+          const sameDirPanes = originalPaneConfig
+            ? repo.panes.filter((p) => p.path === originalPaneConfig.path)
+            : repo.panes
+          const freePaneConfig = sameDirPanes.find((p) => !occupiedPaneIds.has(p.id))
           if (!freePaneConfig) {
             throw new Error('NO_FREE_PANE')
           }
