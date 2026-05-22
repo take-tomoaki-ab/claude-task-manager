@@ -205,24 +205,19 @@ export function registerClaudeHandlers(
                 (('repoId' in t ? (t as { repoId?: string }).repoId : undefined) ?? settings.repos[0]?.id) === repo.id)
               .map((t) => t.pane)
           )
-          // セッション再開時は元のpaneを優先（claude --resume は起動ディレクトリでセッションを検索するため）
+          // 元のpaneが空いていれば優先、塞がっていれば同一リポジトリの他の空きpaneを使用
           const originalPaneConfig = task.pane
             ? repo.panes.find((p) => p.id === task.pane)
             : null
-          if (originalPaneConfig) {
-            if (occupiedPaneIds.has(originalPaneConfig.id)) {
-              throw new Error('PANE_CONFLICT')
-            }
-            assignedPane = originalPaneConfig.id
-            resolvedWorkdir = expandPath(originalPaneConfig.path)
-          } else {
-            const freePaneConfig = repo.panes.find((p) => !occupiedPaneIds.has(p.id))
-            if (!freePaneConfig) {
-              throw new Error('NO_FREE_PANE')
-            }
-            assignedPane = freePaneConfig.id
-            resolvedWorkdir = expandPath(freePaneConfig.path)
+          const freePaneConfig =
+            originalPaneConfig && !occupiedPaneIds.has(originalPaneConfig.id)
+              ? originalPaneConfig
+              : repo.panes.find((p) => !occupiedPaneIds.has(p.id))
+          if (!freePaneConfig) {
+            throw new Error('NO_FREE_PANE')
           }
+          assignedPane = freePaneConfig.id
+          resolvedWorkdir = expandPath(freePaneConfig.path)
         }
 
         if ('branch' in task && task.branch) {
