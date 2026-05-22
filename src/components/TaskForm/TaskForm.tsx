@@ -128,8 +128,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const doSubmit = async () => {
     if (!form.title) return
 
     if (editTask) {
@@ -176,6 +175,18 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
     onClose()
   }
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await doSubmit()
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault()
+      doSubmit()
+    }
+  }
+
   const inputClass = 'w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500'
   const labelClass = 'block text-xs text-gray-400 mb-1'
   const req = <span className="text-red-400 ml-1">*</span>
@@ -189,7 +200,7 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
       <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="p-6">
           <h2 className="text-lg font-semibold text-white mb-4">{editTask ? 'タスクを編集' : '新規タスク'}</h2>
 
           <div className="space-y-3">
