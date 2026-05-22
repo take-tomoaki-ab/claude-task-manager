@@ -106,6 +106,7 @@ export default function SettingsPage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const dragSrc = useRef<{ ri: number; pi: number; di: number } | null>(null)
   const [dragOver, setDragOver] = useState<{ ri: number; pi: number; di: number; position: 'top' | 'bottom' } | null>(null)
+  const [newExtraPath, setNewExtraPath] = useState('')
   const [prSyncing, setPrSyncing] = useState(false)
   const [prSyncResult, setPrSyncResult] = useState<{ created: number; total: number } | null>(null)
   const [, setImportResult] = useState<'ok' | 'cancelled' | 'error' | null>(null)
@@ -996,6 +997,66 @@ export default function SettingsPage() {
                 className={`${inputClass} w-24`}
               />
             </div>
+          </div>
+        </section>
+
+        {/* 追加PATH */}
+        <section>
+          <h2 className="text-sm font-semibold text-gray-300 mb-2">追加PATH</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            git hooks 等の子プロセスに追加するPATHエントリ。Volta・pnpm など、シェル経由でないと見つからないツールのパスを登録してください。
+          </p>
+          <div className="space-y-1.5 mb-2">
+            {(settings.extraPaths ?? []).map((p, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="flex-1 px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-gray-200 font-mono truncate">
+                  {p}
+                </span>
+                <button
+                  onClick={() =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      extraPaths: (prev.extraPaths ?? []).filter((_, j) => j !== i)
+                    }))
+                  }
+                  className="px-2 py-1.5 rounded text-xs bg-red-600 hover:bg-red-700 text-white whitespace-nowrap"
+                >
+                  削除
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={newExtraPath}
+              onChange={(e) => setNewExtraPath(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newExtraPath.trim()) {
+                  setSettings((prev) => ({
+                    ...prev,
+                    extraPaths: [...(prev.extraPaths ?? []), newExtraPath.trim()]
+                  }))
+                  setNewExtraPath('')
+                }
+              }}
+              placeholder="/Users/yourname/.volta/bin"
+              className={`${inputClass} flex-1 font-mono`}
+            />
+            <button
+              onClick={() => {
+                if (!newExtraPath.trim()) return
+                setSettings((prev) => ({
+                  ...prev,
+                  extraPaths: [...(prev.extraPaths ?? []), newExtraPath.trim()]
+                }))
+                setNewExtraPath('')
+              }}
+              disabled={!newExtraPath.trim()}
+              className="px-3 py-1.5 rounded text-sm bg-gray-600 hover:bg-gray-500 text-white disabled:opacity-40 whitespace-nowrap"
+            >
+              追加
+            </button>
           </div>
         </section>
 
