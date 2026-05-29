@@ -339,9 +339,24 @@ export default function TaskForm({ isOpen, onClose, editTask }: Props) {
             )}
 
             <div>
-              <label className={labelClass}>
-                Prompt{form.type === 'research' && req}
-              </label>
+              <div className="flex items-center gap-2 mb-1">
+                <label className={labelClass.replace(' mb-1', '')}>
+                  Prompt{form.type === 'research' && req}
+                </label>
+                <span className="text-xs text-gray-500 flex flex-wrap gap-1">
+                  <span className="font-mono text-blue-400">{'{title}'}</span>
+                  {({
+                    feat: ['{branch}', '{ticket}', '{prompt}'],
+                    design: ['{output}'],
+                    review: ['{pr-url}'],
+                    bugfix: ['{branch}', '{ticket}'],
+                    research: ['{branch}', '{prompt}'],
+                    chore: ['{directory}'],
+                  } as Record<string, string[]>)[form.type]?.map((v) => (
+                    <span key={v} className="font-mono text-blue-400">{v}</span>
+                  ))}
+                </span>
+              </div>
               <textarea
                 value={form.prompt}
                 onChange={(e) => set('prompt', e.target.value)}
